@@ -1,3 +1,4 @@
+import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -8,6 +9,7 @@ export default function LoginScreen() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
 
     async function handleLogin() {
         setLoading(true);
@@ -34,13 +36,18 @@ export default function LoginScreen() {
                     autoCapitalize="none"
                 />
 
-                <TextInput
-                    style={styles.input}
-                    placeholder="Contraseña"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                />
+                <View>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Contraseña"
+                        value={password}
+                        onChangeText={setPassword}
+                        secureTextEntry={!showPassword}
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                        <FontAwesome5 name={showPassword ? "eye-slash" : "eye"} size={20} color="#888" />
+                    </TouchableOpacity>
+                </View>
 
                 <TouchableOpacity
                     style={[styles.button, { backgroundColor: '#1CB0F6', borderBottomColor: '#1899D6' }]}
@@ -83,5 +90,10 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
-    linkText: { color: '#1CB0F6', textAlign: 'center', marginTop: 20, fontWeight: 'bold' }
+    linkText: { color: '#1CB0F6', textAlign: 'center', marginTop: 20, fontWeight: 'bold' },
+    eyeIcon: {
+        position: 'absolute',
+        right: 15,
+        top: 20,
+    },
 });

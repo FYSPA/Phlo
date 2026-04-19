@@ -12,7 +12,7 @@ export default function Page() {
         {/* Aquí podrías poner un logo o una imagen de un robot/personaje */}
         <View style={styles.logoContainer}>
           <Text style={styles.emoji}>🤖</Text>
-          <Text style={styles.appName}>DuoCode</Text>
+          <Text style={styles.appName}>Phlo Code</Text>
           <Text style={styles.slogan}>Aprende a programar gratis, para siempre.</Text>
         </View>
       </View>

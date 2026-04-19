@@ -26,19 +26,14 @@ export default function RootLayout() {
   useEffect(() => {
     if (!initialized) return;
 
-    // Lógica de redirección
-    const inAuthGroup = segments[0] === 'screens'; // Si estamos en login/registro
-    const isUpdatePassword = segments[1] === 'UpdatePasswordScreen';
+    const inAuthGroup = segments[0] === '(tabs)' || segments[0] === 'screens';
 
-    if (!session && !inAuthGroup && segments[0] !== undefined) {
-      // Si no hay sesión y no estamos en auth, mandamos al index (Landing)
+    if (!session && inAuthGroup) {
+      // Si NO hay sesión y trato de entrar a la app -> Al index (Landing)
       router.replace('/');
-    } else if (session && (inAuthGroup || segments[0] === undefined)) {
-      // Si hay sesión y estamos en login o landing, mandamos al mapa
-      // ¡Peeeero, no redirigir automáticamente si el usuario está activamente intentando cambiar su contraseña!
-      if (!isUpdatePassword) {
-        router.replace('/(tabs)/explore');
-      }
+    } else if (session && !inAuthGroup) {
+      // Si SÍ hay sesión y estoy en el login o landing -> Al mapa
+      router.replace('/(tabs)/home');
     }
   }, [session, initialized, segments]);
 

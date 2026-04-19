@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { authService } from '../../src/services/authService';
+import { ProfileHeader } from '../../components/profile/ProfileHeader';
+import { StatCard } from '../../components/profile/StatCard';
+import { SignOutButton } from '../../components/profile/SignOutButton';
 
 export default function ProfileScreen() {
     const [profile, setProfile] = useState<any>(null);
@@ -21,45 +25,62 @@ export default function ProfileScreen() {
         }
     }
 
-    // FUNCIÓN DE CERRAR SESIÓN USANDO EL BACKEND
     async function handleSignOut() {
         try {
             await authService.signOut();
-            // No necesitas redirigir manualmente, el _layout.tsx lo hará solo
         } catch (error: any) {
             Alert.alert('Error', error.message);
         }
     }
 
-    if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
+    if (loading) return (
+        <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#58CC02" />
+        </View>
+    );
 
     return (
-        <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.username}>{profile?.username || 'Usuario'}</Text>
-                <Text style={styles.xpText}>{profile?.xp} XP Totales</Text>
-            </View>
+        <SafeAreaView style={styles.container}>
+            <ScrollView contentContainerStyle={styles.scrollContent}>
 
-            {/* Botón de Logout */}
-            <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-                <Text style={styles.signOutText}>CERRAR SESIÓN</Text>
-            </TouchableOpacity>
-        </View>
+                {/* SECCIÓN DE AVATAR Y NOMBRE */}
+                <ProfileHeader username={profile?.username} />
+
+                {/* CONTENEDOR DE ESTADÍSTICAS (GRID) */}
+                <View style={styles.statsGrid}>
+                    <StatCard icon="🔥" value={profile?.streak || 0} label="Racha" />
+                    <StatCard icon="⚡" value={profile?.xp || 0} label="Total XP" />
+                    <StatCard icon="💎" value={profile?.gems || 0} label="Gemas" />
+                    <StatCard icon="🏆" value={1} label="Liga" />
+                </View>
+
+                {/* BOTÓN CERRAR SESIÓN */}
+                <SignOutButton onPress={handleSignOut} />
+
+            </ScrollView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', padding: 20, justifyContent: 'center' },
-    header: { alignItems: 'center', marginBottom: 50 },
-    username: { fontSize: 28, fontWeight: 'bold', color: '#4B4B4B' },
-    xpText: { fontSize: 18, color: '#777' },
-    signOutButton: {
-        borderColor: '#ff4b4b',
-        borderWidth: 2,
-        borderBottomWidth: 5,
-        borderRadius: 15,
-        padding: 15,
-        alignItems: 'center',
+    container: {
+        flex: 1,
+        backgroundColor: '#fff'
     },
-    signOutText: { color: '#ff4b4b', fontWeight: 'bold', fontSize: 16 }
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    scrollContent: {
+        padding: 20,
+        alignItems: 'center'
+    },
+    statsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginBottom: 30
+    },
 });
