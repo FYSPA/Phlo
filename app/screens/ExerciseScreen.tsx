@@ -1,68 +1,92 @@
+import SuccessModal from '@/components/exercise/SuccessModal';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, LayoutAnimation, StyleSheet, Vibration, View } from 'react-native';
+import { useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import CheckFooter from '../../components/exercise/CheckFooter';
+import MascotInstruction from '../../components/exercise/MascotInstruction';
+import NextExerciseModal from '../../components/exercise/NextExerciseModal';
+import TopBar from '../../components/exercise/TopBar';
 import BlocklyEditor from '../../components/map/BlocklyEditor';
+import { courseService } from '../../src/services/courseService';
 import { exerciseService } from '../../src/services/exerciseService';
+import { supabase } from '../../src/services/supabase';
+import { validateSolution } from '../../src/utils/codeUtils';
+
 
 export default function ExerciseScreen() {
     const { id } = useLocalSearchParams();
     const router = useRouter();
-    const [exercise, setExercise] = useState<any>(null);
+    const [exercises, setExercises] = useState<any[]>([]);
+    const [currentIndex, setCurrentIndex] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
+    const [lives, setLives] = useState(5);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [showNextExercise, setShowNextExercise] = useState(false);
+    const progressWidth = useSharedValue(0);
+
 
     useEffect(() => {
-        loadExercise();
+        if (exercises.length > 0) {
+            const newProgress = ((currentIndex + 1) / exercises.length) * 100;
+            // withSpring hace que rebote un poquito como Duolingo
+            progressWidth.value = withSpring(newProgress, { damping: 15 });
+        }
     }, []);
 
-    async function loadExercise() {
-        try {
-            const data = await exerciseService.getExerciseByLesson(id as string);
-            setExercise(data);
-        } catch (e) {
-            Alert.alert("Error", "No hay ejercicios para esta lección aún.");
-            router.back();
+    useEffect(() => {
+        loadExercises();
+    }, [id]);
+
+
+    async function loadExercises() {
+        setExercises([]);
+        setCurrentIndex(0);
+        setCurrentCode('');
+
+        // 1. Traer TODOS los ejercicios de esta lección
+        const { data } = await supabase
+            .from('exercises')
+            .select('*')
+            .eq('lesson_id', id)
+            .order('order_index', { ascending: true });
+
+        if (data && data.length > 0) {
+            setExercises(data);
         }
     }
 
-    const checkSolution = () => {
-        // Comparamos el código generado contra la solución de la base de datos
-        if (currentCode.trim() === exercise.solution_js.trim()) {
-            Alert.alert("¡Increíble!", "Has resuelto el reto correctamente. +10 XP", [
-                { text: "CONTINUAR", onPress: () => router.back() }
-            ]);
+    const exercise = exercises[currentIndex];
+    if (!exercise) return <ActivityIndicator />;
+
+
+
+    const checkSolution = async () => {
+        const currentExercise = exercises[currentIndex];
+        const isCorrect = validateSolution(currentCode, currentExercise.solution_js);
+
+        if (isCorrect) {
+            if (currentIndex < exercises.length - 1) {
+                setShowNextExercise(true);
+            } else {
+                await exerciseService.completeLevel(id as string, 10, 2);
+                setShowSuccess(true);
+            }
         } else {
-            Alert.alert("Casi...", "Tu código no coincide con la solución esperada. Revisa los bloques.");
+            Vibration.vibrate(500);
+            setLives(prev => prev - 1);
+            Alert.alert("INTENTA DE NUEVO", "Los bloques no están en el orden correcto.");
         }
     };
 
-    if (!exercise) return null;
 
-    // Dentro de ExerciseScreen.tsx
     return (
         <SafeAreaView style={styles.container}>
-            {/* BARRA DE PROGRESO SUPERIOR */}
-            <View style={styles.topBar}>
-                <TouchableOpacity onPress={() => router.back()}>
-                    <Text style={styles.closeBtn}>✕</Text>
-                </TouchableOpacity>
-                <View style={styles.progressBg}>
-                    <View style={[styles.progressFill, { width: '40%' }]} />
-                </View>
-                <Text style={styles.heartText}>❤️ 5</Text>
-            </View>
+            <TopBar lives={lives} progress={exercises.length > 0 ? (currentIndex / exercises.length) * 100 : 0} onClose={() => router.back()} />
 
-            {/* BURBUJA DE INSTRUCCIÓN */}
-            <View style={styles.instructionContainer}>
-                <View style={styles.avatarMini}>
-                    <Text style={{ fontSize: 30 }}>🤖</Text>
-                </View>
-                <View style={styles.bubble}>
-                    <Text style={styles.instructionText}>{exercise.instruction}</Text>
-                </View>
-            </View>
+            <MascotInstruction instruction={exercise.instruction} />
 
-            {/* EDITOR BLOCKLY (Ahora limpio) */}
             <View style={styles.editorContainer}>
                 <BlocklyEditor
                     toolboxConfig={exercise.toolbox_config}
@@ -70,61 +94,43 @@ export default function ExerciseScreen() {
                 />
             </View>
 
-            {/* BOTÓN DE COMPROBAR */}
-            <View style={styles.footer}>
-                <TouchableOpacity style={styles.checkButton} onPress={checkSolution}>
-                    <Text style={styles.checkButtonText}>COMPROBAR</Text>
-                </TouchableOpacity>
-            </View>
+            <CheckFooter lives={lives} onCheck={checkSolution} />
+
+            <SuccessModal
+                visible={showSuccess}
+                onNext={() => {
+                    setShowSuccess(false);
+                    router.replace('/(tabs)/home');
+                }}
+                onNextLevel={async () => {
+                    setShowSuccess(false);
+                    const nextLevelId = await courseService.getNextLevelId(id as string);
+
+                    if (nextLevelId) {
+                        router.replace(`/screens/ExerciseScreen?id=${nextLevelId}`);
+                    } else {
+                        Alert.alert("¡Felicidades!", "Has completado todos los niveles disponibles.");
+                        router.replace('/(tabs)/home');
+                    }
+                }}
+                xp={10}
+                gems={2}
+            />
+
+            <NextExerciseModal
+                visible={showNextExercise}
+                onNext={() => {
+                    setShowNextExercise(false);
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
+                    setCurrentIndex(prev => prev + 1);
+                    setCurrentCode('');
+                }}
+            />
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
-    topBar: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 15,
-        gap: 15
-    },
-    closeBtn: { fontSize: 24, color: '#AFAFAF', fontWeight: 'bold' },
-    progressBg: {
-        flex: 1,
-        height: 16,
-        backgroundColor: '#E5E5E5',
-        borderRadius: 10,
-        overflow: 'hidden'
-    },
-    progressFill: {
-        height: '100%',
-        backgroundColor: '#58CC02',
-        borderRadius: 10
-    },
-    heartText: { fontWeight: 'bold', color: '#FF4B4B', fontSize: 18 },
-    instructionContainer: {
-        flexDirection: 'row',
-        padding: 20,
-        alignItems: 'center'
-    },
-    avatarMini: { marginRight: 15 },
-    bubble: {
-        flex: 1,
-        borderWidth: 2,
-        borderColor: '#E5E5E5',
-        borderRadius: 15,
-        padding: 12
-    },
-    instructionText: { fontSize: 16, fontWeight: 'bold', color: '#4B4B4B' },
-    editorContainer: { flex: 1 },
-    footer: { padding: 20, borderTopWidth: 2, borderTopColor: '#E5E5E5' },
-    checkButton: {
-        backgroundColor: '#58CC02',
-        padding: 18,
-        borderRadius: 16,
-        borderBottomWidth: 5,
-        borderBottomColor: '#46A302',
-        alignItems: 'center'
-    },
-    checkButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 18, letterSpacing: 1 }
+    editorContainer: { flex: 1 }
 });

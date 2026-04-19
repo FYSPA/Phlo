@@ -1,5 +1,7 @@
 import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { WebView } from 'react-native-webview';
+
 
 interface Props {
   toolboxConfig: any;
@@ -8,94 +10,96 @@ interface Props {
 
 export default function BlocklyEditor({ toolboxConfig, onCodeChange }: Props) {
   const html = `
+    <!DOCTYPE html>
     <html>
       <head>
+        <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <script src="https://unpkg.com/blockly/blockly.min.js"></script>
         <style>
-          /* ESTILOS CSS PARA PARECERSE A DUOLINGO */
-          body { 
-            margin: 0; 
-            padding: 0; 
-            background-color: #FFFFFF; 
-            font-family: 'sans-serif';
+          html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background-color: #ffffff; overflow: hidden; 
           }
-          #blocklyDiv { height: 100vh; width: 100vw; }
+          #blocklyDiv { width: 100vw; height: 100vh; }
 
-          /* Ocultar scrollbars y componentes feos */
-          .blocklyFlyoutBackground {
-            fill: #F7F7F7;
-            fill-opacity: 1;
-          }
-          .blocklyPath {
-            stroke-width: 0; /* Bloques sin bordes negros */
-          }
+          /* FONDO DE REJILLA (DOT GRID) */
           .blocklySvg {
-            background-color: #FFFFFF; /* Fondo blanco limpio */
+            background-image: radial-gradient(#E5E5E5 1.5px, transparent 1.5px);
+            background-size: 30px 30px;
+            background-color: #ffffff;
           }
-          /* Bordes redondeados en la caja de herramientas */
-          .blocklyFlyout {
-            border-right: 2px solid #E5E5E5;
+
+          /* ESTILO BANCO DE BLOQUES ABAJO */
+          .blocklyFlyoutBackground {
+            fill: #F7F7F7 !important;
+            fill-opacity: 1;
+            stroke: #E5E5E5;
+            stroke-width: 2px;
           }
-          /* Esconder botones de zoom y basura */
-          .blocklyZoom, .blocklyTrash { display: none; }
+
+          /* BLOQUES ESTILO FLAT (SIN BORDES NEGROS) */
+          .blocklyPath { stroke-width: 0; }
+
+          /* OCULTAR ELEMENTOS INNECESARIOS */
+          .blocklyScrollbarHorizontal, 
+          .blocklyScrollbarVertical,
+          .blocklyTrash, 
+          .blocklyZoom { display: none !important; }
         </style>
       </head>
       <body>
         <div id="blocklyDiv"></div>
         <script>
-          // TEMA ESTILO DUOLINGO
-          const DuoTheme = Blockly.Theme.defineTheme('duo', {
-            'base': Blockly.Themes.Classic,
-            'blockStyles': {
-              'logic_blocks': { 'colourPrimary': '#1CB0F6' }, // Azul
-              'loop_blocks': { 'colourPrimary': '#FFB800' },  // Amarillo
-              'math_blocks': { 'colourPrimary': '#58CC02' },  // Verde
-              'variable_blocks': { 'colourPrimary': '#FF9600' } // Naranja
-            },
-            'componentStyles': {
-              'workspaceBackgroundColour': '#FFFFFF',
-              'toolboxBackgroundColour': '#F7F7F7',
-              'toolboxForegroundColour': '#4B4B4B',
-              'flyoutBackgroundColour': '#F7F7F7',
-              'scrollbarColour': '#E5E5E5',
-              'insertionMarkerColour': '#58CC02'
-            }
-          });
+          window.onload = function() {
+            const DuoTheme = Blockly.Theme.defineTheme('duo', {
+              'base': Blockly.Themes.Classic,
+              'blockStyles': {
+                'logic_blocks': { 'colourPrimary': '#1CB0F6' },
+                'math_blocks': { 'colourPrimary': '#58CC02' },
+                'variable_blocks': { 'colourPrimary': '#FF9600' }
+              },
+              'componentStyles': {
+                'workspaceBackgroundColour': 'transparent',
+                'toolboxBackgroundColour': '#F7F7F7',
+              }
+            });
 
-          const toolbox = {
-            "kind": "flyoutToolbox",
-            "contents": ${JSON.stringify(toolboxConfig)}
+            const workspace = Blockly.inject('blocklyDiv', {
+              toolbox: { "kind": "flyoutToolbox", "contents": ${JSON.stringify(toolboxConfig)} },
+              toolboxPosition: 'bottom',
+              horizontalLayout: true,
+              theme: DuoTheme,
+              trashcan: false,
+              zoom: { startScale: 1.2 }
+            });
+
+            workspace.addChangeListener(() => {
+              const code = Blockly.JavaScript.workspaceToCode(workspace);
+              window.ReactNativeWebView.postMessage(code);
+            });
           };
-
-          const workspace = Blockly.inject('blocklyDiv', {
-            toolbox: toolbox,
-            theme: DuoTheme,
-            renderer: 'pxt', // Un renderizado más plano si está disponible
-            move: {
-              scrollbars: false,
-              drag: true,
-              wheel: false
-            },
-            zoom: { startScale: 1.4 } // Bloques más grandes para dedos
-          });
-
-          workspace.addChangeListener(() => {
-            const code = Blockly.JavaScript.workspaceToCode(workspace);
-            window.ReactNativeWebView.postMessage(code);
-          });
         </script>
       </body>
     </html>
   `;
 
   return (
-    <WebView
-      originWhitelist={['*']}
-      source={{ html }}
-      onMessage={(event) => onCodeChange(event.nativeEvent.data)}
-      style={{ flex: 1 }}
-      scrollEnabled={false} // Evita que la pantalla se mueva al arrastrar bloques
-    />
+    <View style={{ flex: 1 }}>
+      <WebView
+        originWhitelist={['*']}
+        source={{ html }}
+        onMessage={(event) => onCodeChange(event.nativeEvent.data)}
+        javaScriptEnabled={true}
+        style={{ flex: 1 }}
+        scrollEnabled={false}
+        startInLoadingState={true}
+        renderLoading={() => (
+          <View style={{ position: 'absolute', height: '100%', width: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+            <ActivityIndicator size="large" color="#58CC02" />
+          </View>
+        )}
+      />
+    </View>
   );
 }

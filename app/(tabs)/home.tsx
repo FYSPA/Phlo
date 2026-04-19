@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Dimensions, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { courseService } from '../../src/services/courseService';
 
@@ -12,6 +12,13 @@ export default function LearnMap() {
   useEffect(() => {
     loadLessons();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadLessons();
+    }, [])
+  );
+
 
   async function loadLessons() {
     const data = await courseService.getLevels();

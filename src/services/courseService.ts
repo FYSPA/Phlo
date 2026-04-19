@@ -25,5 +25,34 @@ export const courseService = {
         }
 
         return data;
+    },
+
+    async getNextLevelId(currentLessonId: string) {
+        try {
+            // 1. Obtener el order_index de la lección actual
+            const { data: currentLesson, error: currentError } = await supabase
+                .from('lessons')
+                .select('order_index')
+                .eq('id', currentLessonId)
+                .single();
+
+            if (currentError || !currentLesson) return null;
+
+            // 2. Buscar la siguiente lección
+            const { data: nextLesson, error: nextError } = await supabase
+                .from('lessons')
+                .select('id')
+                .gt('order_index', currentLesson.order_index)
+                .order('order_index', { ascending: true })
+                .limit(1)
+                .single();
+
+            if (nextError || !nextLesson) return null;
+
+            return nextLesson.id;
+        } catch (e) {
+            console.error("Error al obtener el siguiente nivel:", e);
+            return null;
+        }
     }
 };
