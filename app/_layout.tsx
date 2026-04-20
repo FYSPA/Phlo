@@ -1,6 +1,6 @@
 import { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, useSegments, useRootNavigationState } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { supabase } from '../src/services/supabase';
 
@@ -8,6 +8,7 @@ export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [initialized, setInitialized] = useState(false);
   const segments = useSegments();
+  const rootNavigationState = useRootNavigationState();
   const url = Linking.useURL();
   const router = useRouter();
 
@@ -25,17 +26,41 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (!initialized) return;
+    if (!rootNavigationState?.key) return; // Esperar a que la navegación esté montada
 
-    const inAuthGroup = segments[0] === '(tabs)' || segments[0] === 'screens';
+    // Bypass strict Expo Router types for segments
+    const currentSegments = segments as string[];
+
+    // 1. Revisamos si el usuario está intentando entrar a una zona protegida
+    const isInsideTabs = currentSegments[0] === '(tabs)';
+    
+    // Pantallas públicas dentro de la carpeta screens
+    const publicScreens = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'UpdatePasswordScreen'];
+    const isPublicScreen = currentSegments.length > 1 && currentSegments[0] === 'screens' && publicScreens.includes(currentSegments[1]);
+    
+    // Solo requerimos auth si es una pestaña o si es una pantalla privada (ej: ExerciseScreen)
+    const isInsideScreens = currentSegments[0] === 'screens';
+    const inAuthGroup = isInsideTabs || (isInsideScreens && !isPublicScreen);
+
+    // LOGS DE DEPURACIÓN
+    console.log('Segmentos actuales:', currentSegments);
+    console.log('¿Hay sesión?:', !!session);
+    console.log('¿Requiere Auth?:', inAuthGroup);
 
     if (!session && inAuthGroup) {
-      // Si NO hay sesión y trato de entrar a la app -> Al index (Landing)
+      // Caso A: No hay sesión y quiere entrar al juego -> Lo mandamos al inicio (Landing)
+      console.log('Redirigiendo a Landing por falta de sesión');
       router.replace('/');
-    } else if (session && !inAuthGroup) {
-      // Si SÍ hay sesión y estoy en el login o landing -> Al mapa
+    }
+    else if (session && (!inAuthGroup || isPublicScreen || currentSegments.length === 0)) {
+      // Caso B: Hay sesión pero está en el Landing o Login -> Lo mandamos al Mapa
+      console.log('Redirigiendo al Mapa porque ya inició sesión');
+
+      // IMPORTANTE: Asegúrate de que esta ruta sea válida. 
+      // Si tu archivo es app/(tabs)/index.tsx, la ruta es '/(tabs)'
       router.replace('/(tabs)/home');
     }
-  }, [session, initialized, segments]);
+  }, [session, initialized, segments, rootNavigationState?.key]);
 
 
   // useEffect(() => {
