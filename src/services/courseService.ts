@@ -1,7 +1,13 @@
 import { supabase } from './supabase';
 
 export const courseService = {
+    _levelsCache: null as any[] | null,
+
     async getLevels() {
+        if (this._levelsCache) {
+            return this._levelsCache;
+        }
+
         // 1. Obtener el ID del usuario actual
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return [];
@@ -10,13 +16,13 @@ export const courseService = {
         const { data, error } = await supabase
             .from('lessons')
             .select(`
-        id,
-        title,
-        order_index,
-        user_progress (
-          completed_at
-        )
-      `)
+                id,
+                title,
+                order_index,
+                user_progress (
+                    completed_at
+                )
+            `)
             .order('order_index', { ascending: true });
 
         if (error) {
@@ -24,6 +30,7 @@ export const courseService = {
             throw error;
         }
 
+        this._levelsCache = data;
         return data;
     },
 
