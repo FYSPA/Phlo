@@ -1,3 +1,4 @@
+import GameOverModal from '@/components/exercise/GameOverModal';
 import SuccessModal from '@/components/exercise/SuccessModal';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -12,7 +13,7 @@ import BlocklyEditor from '../../components/map/BlocklyEditor';
 import { courseService } from '../../src/services/courseService';
 import { exerciseService } from '../../src/services/exerciseService';
 import { supabase } from '../../src/services/supabase';
-import { validateSolution } from '../../src/utils/codeUtils';
+import { validateSolutionWithFeedback } from '../../src/utils/codeUtils';
 
 
 export default function ExerciseScreen() {
@@ -24,6 +25,7 @@ export default function ExerciseScreen() {
     const [lives, setLives] = useState(5);
     const [showSuccess, setShowSuccess] = useState(false);
     const [showNextExercise, setShowNextExercise] = useState(false);
+    const [showGameOver, setShowGameOver] = useState(false);
     const progressWidth = useSharedValue(0);
 
 
@@ -63,20 +65,63 @@ export default function ExerciseScreen() {
 
 
     const checkSolution = async () => {
-        const currentExercise = exercises[currentIndex];
-        const isCorrect = validateSolution(currentCode, currentExercise.solution_js);
+        try {
+            const currentExercise = exercises[currentIndex];
 
-        if (isCorrect) {
-            if (currentIndex < exercises.length - 1) {
-                setShowNextExercise(true);
-            } else {
-                await exerciseService.completeLevel(id as string, 10, 2);
-                setShowSuccess(true);
+            // Si Blockly no pudo generar código válido, es incorrecto automáticamente
+            if (!currentCode || currentCode === '__INVALID_CODE__' || currentCode.trim() === '') {
+                Vibration.vibrate(500);
+                const newLives = lives - 1;
+                setLives(newLives);
+                if (newLives <= 0) {
+                    setShowGameOver(true);
+                } else {
+                    Alert.alert(
+                        "INTENTA DE NUEVO",
+                        "Los bloques no están conectados correctamente. Revisa el orden."
+                    );
+                }
+                return;
             }
-        } else {
+
+            const { isCorrect, errorMessage } = validateSolutionWithFeedback(
+                currentCode,
+                currentExercise.solution_js
+            );
+
+            if (isCorrect) {
+                if (currentIndex < exercises.length - 1) {
+                    setShowNextExercise(true);
+                } else {
+                    await exerciseService.completeLevel(id as string, 10, 2);
+                    setShowSuccess(true);
+                }
+            } else {
+                Vibration.vibrate(500);
+                const newLives = lives - 1;
+                setLives(newLives);
+                if (newLives <= 0) {
+                    setShowGameOver(true);
+                } else {
+                    Alert.alert(
+                        "INTENTA DE NUEVO",
+                        errorMessage || "Los bloques no están en el orden correcto."
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Error en checkSolution:', error);
             Vibration.vibrate(500);
-            setLives(prev => prev - 1);
-            Alert.alert("INTENTA DE NUEVO", "Los bloques no están en el orden correcto.");
+            const newLives = lives - 1;
+            setLives(newLives);
+            if (newLives <= 0) {
+                setShowGameOver(true);
+            } else {
+                Alert.alert(
+                    "INTENTA DE NUEVO",
+                    "Ocurrió un problema al verificar. Intenta reorganizar los bloques."
+                );
+            }
         }
     };
 
@@ -124,6 +169,21 @@ export default function ExerciseScreen() {
                     LayoutAnimation.configureNext(LayoutAnimation.Presets.spring);
                     setCurrentIndex(prev => prev + 1);
                     setCurrentCode('');
+                }}
+            />
+
+            <GameOverModal
+                visible={showGameOver}
+                onRetry={() => {
+                    setShowGameOver(false);
+                    setLives(5);
+                    setCurrentIndex(0);
+                    setCurrentCode('');
+                    loadExercises();
+                }}
+                onHome={() => {
+                    setShowGameOver(false);
+                    router.replace('/(tabs)/home');
                 }}
             />
         </SafeAreaView>
