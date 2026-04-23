@@ -66,6 +66,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     paddingHorizontal: 20,
+    fontWeight: '600',
   },
   footer: {
     gap: 12,

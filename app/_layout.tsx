@@ -1,58 +1,87 @@
 import { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
 import { useEffect, useState } from 'react';
+import LoadingScreen from '../components/common/LoadingScreen';
+import { courseService } from '../src/services/courseService';
 import { supabase } from '../src/services/supabase';
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [dataReady, setDataReady] = useState(false);
   const segments = useSegments();
+  const rootNavigationState = useRootNavigationState();
   const url = Linking.useURL();
   const router = useRouter();
 
   useEffect(() => {
-    // Escuchar cambios en la sesión
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // 1. Obtener sesión inicial con un retraso artificial para mejorar la UX
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
-      setInitialized(true);
+      
+      if (session) {
+        // Pre-fetch de los niveles mientras el robot está en pantalla
+        try {
+          await courseService.getLevels();
+        } catch (e) {
+          console.error("Error pre-fetching:", e);
+        }
+      }
+      setDataReady(true);
+
+      // Mínimo 2 segundos de animación para que se sienta fluido
+      setTimeout(() => {
+        setInitialized(true);
+      }, 2000);
+    };
+
+    initAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
     if (!initialized) return;
+    if (!rootNavigationState?.key) return;
 
-    const inAuthGroup = segments[0] === '(tabs)' || segments[0] === 'screens';
+    const currentSegments = segments as string[];
+
+    const isInsideTabs = currentSegments[0] === '(tabs)';
+
+    const publicScreens = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'UpdatePasswordScreen'];
+    const isPublicScreen = currentSegments.length > 1 && currentSegments[0] === 'screens' && publicScreens.includes(currentSegments[1]);
+
+    const isInsideScreens = currentSegments[0] === 'screens';
+    const inAuthGroup = isInsideTabs || (isInsideScreens && !isPublicScreen);
 
     if (!session && inAuthGroup) {
-      // Si NO hay sesión y trato de entrar a la app -> Al index (Landing)
       router.replace('/');
-    } else if (session && !inAuthGroup) {
-      // Si SÍ hay sesión y estoy en el login o landing -> Al mapa
+    }
+    else if (session && (!inAuthGroup || isPublicScreen || currentSegments.length === 0)) {
       router.replace('/(tabs)/home');
     }
-  }, [session, initialized, segments]);
+  }, [session, initialized, segments, rootNavigationState?.key]);
 
 
-  // useEffect(() => {
-  //   const handleDeepLink = (url: string) => {
-  //     const { path, queryParams } = Linking.parse(url);
-  //     if (path === 'update-password') {
-  //       router.push('/screens/UpdatePasswordScreen');
-  //     }
-  //   };
+  // 1. Calculamos la posición actual para decidir qué renderizar
+  const currentSegments = segments as string[];
+  const isInsideTabs = currentSegments[0] === '(tabs)';
+  const publicScreens = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'UpdatePasswordScreen'];
+  const isPublicScreen = currentSegments.length > 1 && currentSegments[0] === 'screens' && publicScreens.includes(currentSegments[1] as string);
+  const isInsideScreens = currentSegments[0] === 'screens';
+  const inAuthGroup = isInsideTabs || (isInsideScreens && !isPublicScreen);
 
-  //   // Escuchar si la app se abre con un link
-  //   const subscription = Linking.addEventListener('url', (event) => {
-  //     handleDeepLink(event.url);
-  //   });
+  // 2. Decidimos si mostrar la carga (esperamos a la sesión Y a los datos del mapa)
+  const showLoading = !initialized || !dataReady || (session && !inAuthGroup);
 
-  //   return () => subscription.remove();
-  // }, []);
 
   useEffect(() => {
     const handleDeepLink = async () => {
@@ -81,6 +110,10 @@ export default function RootLayout() {
 
     handleDeepLink();
   }, [url]);
+
+  if (showLoading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>
