@@ -1,7 +1,7 @@
 import GameOverModal from '@/components/exercise/GameOverModal';
 import SuccessModal from '@/components/exercise/SuccessModal';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, LayoutAnimation, StyleSheet, Vibration, View } from 'react-native';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,7 +22,17 @@ export default function ExerciseScreen() {
     const [exercises, setExercises] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
+    const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [lives, setLives] = useState(5);
+
+    const handleCodeChange = useCallback((code: string) => {
+        if (debounceTimeout.current) {
+            clearTimeout(debounceTimeout.current);
+        }
+        debounceTimeout.current = setTimeout(() => {
+            setCurrentCode(code);
+        }, 500);
+    }, []);
     const [showSuccess, setShowSuccess] = useState(false);
     const [showNextExercise, setShowNextExercise] = useState(false);
     const [showGameOver, setShowGameOver] = useState(false);
@@ -65,25 +75,20 @@ export default function ExerciseScreen() {
 
 
     const checkSolution = async () => {
+        console.log('[DEBUG] 🔵 checkSolution ejecutado! currentCode:', currentCode);
+        console.trace('[DEBUG] Trace de checkSolution'); // Esto nos dirá quién lo llamó
         try {
             const currentExercise = exercises[currentIndex];
 
-            // Si Blockly no pudo generar código válido, es incorrecto automáticamente
+            // ── Código vacío o inválido: el usuario aún no terminó de armar los bloques.
+            // NO restamos vida — simplemente le avisamos que siga intentando.
             if (!currentCode || currentCode === '__INVALID_CODE__' || currentCode.trim() === '') {
-                Vibration.vibrate(500);
-                const newLives = lives - 1;
-                setLives(newLives);
-                if (newLives <= 0) {
-                    setShowGameOver(true);
-                } else {
-                    Alert.alert(
-                        "INTENTA DE NUEVO",
-                        "Los bloques no están conectados correctamente. Revisa el orden."
-                    );
-                }
-                return;
+                Alert.alert(
+                    "¡Casi!",
+                    "Conecta los bloques antes de comprobar."
+                );
+                return; // ← Sin penalización, sin quitar vidas
             }
-
             const { isCorrect, errorMessage } = validateSolutionWithFeedback(
                 currentCode,
                 currentExercise.solution_js
@@ -110,18 +115,12 @@ export default function ExerciseScreen() {
                 }
             }
         } catch (error) {
+            // Error inesperado: nunca penalizar, solo avisar
             console.error('Error en checkSolution:', error);
-            Vibration.vibrate(500);
-            const newLives = lives - 1;
-            setLives(newLives);
-            if (newLives <= 0) {
-                setShowGameOver(true);
-            } else {
-                Alert.alert(
-                    "INTENTA DE NUEVO",
-                    "Ocurrió un problema al verificar. Intenta reorganizar los bloques."
-                );
-            }
+            Alert.alert(
+                "¡Casi!",
+                "Ocurrió un problema al verificar. Revisa los bloques e intenta de nuevo."
+            );
         }
     };
 
@@ -135,7 +134,7 @@ export default function ExerciseScreen() {
             <View style={styles.editorContainer}>
                 <BlocklyEditor
                     toolboxConfig={exercise.toolbox_config}
-                    onCodeChange={setCurrentCode}
+                    onCodeChange={handleCodeChange}
                 />
             </View>
 

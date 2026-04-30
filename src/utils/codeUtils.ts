@@ -16,6 +16,41 @@ export const normalizeCode = (code: string): string => {
 };
 
 /**
+ * Normaliza nombres de variables para que 'puntos' o 'i' sean equivalentes.
+ * Busca declaraciones de variables y asignaciones.
+ */
+export const anonymizeVariables = (code: string): string => {
+    if (!code) return "";
+
+    const variables = new Map<string, string>(); // name -> __VAR_X__
+    let varIndex = 1;
+
+    const keywords = [
+        'var', 'let', 'const', 'if', 'else', 'for', 'while', 'function', 'return',
+        'true', 'false', 'null', 'undefined', 'console', 'log', 'Math', 'window', 'document'
+    ];
+
+    const contextRegex = /(?:var|let|const)\s+([a-zA-Z_$][0-9a-zA-Z_$]*)|([a-zA-Z_$][0-9a-zA-Z_$]*)\s*[-+*/]?=/g;
+    
+    let match;
+    while ((match = contextRegex.exec(code)) !== null) {
+        const varName = match[1] || match[2];
+        if (varName && !keywords.includes(varName) && !variables.has(varName)) {
+            variables.set(varName, `__VAR_${varIndex}__`);
+            varIndex++;
+        }
+    }
+
+    let result = code;
+    for (const [name, token] of variables.entries()) {
+        const regex = new RegExp(`\\b${name}\\b`, 'g');
+        result = result.replace(regex, token);
+    }
+
+    return result;
+};
+
+/**
  * Extrae los tokens significativos de una expresión para comparación flexible.
  * Ejemplo: "var puntos = 10" → ["var", "puntos", "=", "10"]
  */
@@ -135,26 +170,30 @@ export const validateSolution = (userCode: string, expectedCode: string): boolea
             return false;
         }
 
+        // Anonymize variables
+        const anonUserCode = anonymizeVariables(userCode);
+        const anonExpectedCode = anonymizeVariables(expectedCode);
+
         // 2. Comparación normalizada exacta (funciona para la mayoría de casos)
-        if (normalizeCode(userCode) === normalizeCode(expectedCode)) {
+        if (normalizeCode(anonUserCode) === normalizeCode(anonExpectedCode)) {
             return true;
         }
 
         // 3. Comparación flexible con conmutatividad
-        if (areExpressionsEquivalent(userCode, expectedCode)) {
+        if (areExpressionsEquivalent(anonUserCode, anonExpectedCode)) {
             return true;
         }
 
         // 4. Comparación línea por línea para código multilínea
-        const userLines = userCode.trim().split('\n').map(l => normalizeCode(l)).filter(l => l.length > 0);
-        const expectedLines = expectedCode.trim().split('\n').map(l => normalizeCode(l)).filter(l => l.length > 0);
+        const userLines = anonUserCode.trim().split('\n').map(l => normalizeCode(l)).filter(l => l.length > 0);
+        const expectedLines = anonExpectedCode.trim().split('\n').map(l => normalizeCode(l)).filter(l => l.length > 0);
 
         if (userLines.length === expectedLines.length) {
             const allMatch = userLines.every((line, i) => {
                 if (line === expectedLines[i]) return true;
                 // Intentar comparación flexible por línea
-                const userRawLine = userCode.trim().split('\n')[i] || '';
-                const expectedRawLine = expectedCode.trim().split('\n')[i] || '';
+                const userRawLine = anonUserCode.trim().split('\n')[i] || '';
+                const expectedRawLine = anonExpectedCode.trim().split('\n')[i] || '';
                 return areExpressionsEquivalent(userRawLine, expectedRawLine);
             });
             if (allMatch) return true;
