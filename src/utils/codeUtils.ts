@@ -174,15 +174,15 @@ export const validateSolutionWithFeedback = (userCode: string, expectedCode: str
 
             // Validar Nombre de Variable (Estricto)
             if (expectedInfo.name !== userInfo.name) {
-                return { 
-                    isCorrect: false, 
-                    errorMessage: `El nombre de la variable debe ser '${expectedInfo.name}'.` 
+                return {
+                    isCorrect: false,
+                    errorMessage: `El nombre de la variable debe ser '${expectedInfo.name}'.`
                 };
             }
 
             // Validar Valor (Soporta conmutatividad y normalización)
-            const isValueCorrect = 
-                normalizeCode(userInfo.value) === normalizeCode(expectedInfo.value) || 
+            const isValueCorrect =
+                normalizeCode(userInfo.value) === normalizeCode(expectedInfo.value) ||
                 areExpressionsEquivalent(userInfo.value, expectedInfo.value);
 
             if (!isValueCorrect) {
@@ -193,8 +193,8 @@ export const validateSolutionWithFeedback = (userCode: string, expectedCode: str
         }
 
         // Si no es una asignación, hacer validación general (exacta o flexible)
-        const isGeneralCorrect = 
-            normalizeCode(cleanedUser) === normalizeCode(cleanedExpected) || 
+        const isGeneralCorrect =
+            normalizeCode(cleanedUser) === normalizeCode(cleanedExpected) ||
             areExpressionsEquivalent(cleanedUser, cleanedExpected);
 
         if (isGeneralCorrect) {

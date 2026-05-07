@@ -2,10 +2,11 @@ import GameOverModal from '@/components/exercise/GameOverModal';
 import SuccessModal from '@/components/exercise/SuccessModal';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, LayoutAnimation, StyleSheet, Vibration, View, TouchableOpacity, Text } from 'react-native';
+import { ActivityIndicator, Alert, LayoutAnimation, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CheckFooter from '../../components/exercise/CheckFooter';
+import CodeViewer from '../../components/exercise/CodeViewer';
 import MascotInstruction from '../../components/exercise/MascotInstruction';
 import NextExerciseModal from '../../components/exercise/NextExerciseModal';
 import TopBar from '../../components/exercise/TopBar';
@@ -14,7 +15,6 @@ import { courseService } from '../../src/services/courseService';
 import { exerciseService } from '../../src/services/exerciseService';
 import { supabase } from '../../src/services/supabase';
 import { validateSolutionWithFeedback } from '../../src/utils/codeUtils';
-import CodeViewer from '../../components/exercise/CodeViewer';
 
 
 export default function ExerciseScreen() {
@@ -93,9 +93,6 @@ export default function ExerciseScreen() {
                 return; // ← Sin penalización, sin quitar vidas
             }
 
-            console.log('[DEBUG] 🟢 Código del usuario:', JSON.stringify(currentCode));
-            console.log('[DEBUG] 🟣 Solución esperada:', JSON.stringify(currentExercise.solution_js));
-
             const { isCorrect, errorMessage } = validateSolutionWithFeedback(
                 currentCode,
                 currentExercise.solution_js
@@ -125,6 +122,7 @@ export default function ExerciseScreen() {
             }
         } catch (error) {
             // Error inesperado: nunca penalizar, solo avisar
+            // Error inesperado: nunca penalizar, solo avisar
             console.error('Error en checkSolution:', error);
             Alert.alert(
                 "¡Casi!",
@@ -141,11 +139,11 @@ export default function ExerciseScreen() {
             <MascotInstruction instruction={exercise.instruction} />
 
             <View style={styles.toolbar}>
-                <TouchableOpacity 
+                <TouchableOpacity
                     onPress={() => {
                         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                         setShowCode(!showCode);
-                    }} 
+                    }}
                     style={styles.toggleBtn}
                 >
                     <Text style={styles.toggleText}>{showCode ? 'Ocultar Código' : '</> Ver Código'}</Text>
