@@ -1,31 +1,72 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Platform } from 'react-native';
 
-import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { FontAwesome5 } from '@expo/vector-icons';
+import { Swords } from 'lucide-react-native';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const activeColor = '#FF0055';
+  const inactiveColor = isDark ? '#8A8A93' : '#A0A0A0';
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
+        tabBarActiveTintColor: activeColor,
+        tabBarInactiveTintColor: inactiveColor,
+        tabBarShowLabel: true,
+        tabBarStyle: {
+          position: 'absolute',
+          bottom: Platform.OS === 'ios' ? 30 : 20,
+          left: 20,
+          right: 20,
+          backgroundColor: '#FFFFFF',
+          borderRadius: 30,
+          height: 70,
+          paddingBottom: Platform.OS === 'ios' ? 20 : 10,
+          paddingTop: 10,
+          borderTopWidth: 0.5,
+          elevation: 10,
+          shadowColor: '#ffffffff',
+          shadowOffset: { width: 0, height: 10 },
+          shadowOpacity: 0.15,
+          shadowRadius: 20,
+        },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: 'bold',
+          marginTop: 4,
+        }
       }}>
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Map Exercises',
-          tabBarIcon: ({ color }) => <FontAwesome5 size={28} name="home" color="black" />,
+          title: 'Mapa',
+          tabBarIcon: ({ color, focused }) => (
+            <FontAwesome5 size={focused ? 26 : 24} name="map-marked-alt" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="pvp"
+        options={{
+          title: 'Arena PvP',
+          tabBarIcon: ({ color, focused }) => (
+            <Swords size={focused ? 28 : 24} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color }) => <FontAwesome5 size={28} name="user-circle" color="black" />,
+          title: 'Perfil',
+          tabBarIcon: ({ color, focused }) => (
+            <FontAwesome5 size={focused ? 26 : 24} name="user-alt" color={color} />
+          ),
         }}
       />
     </Tabs>

@@ -2,6 +2,7 @@
 
 # dependencies
 node_modules/
+.agents/
 
 # Expo
 .expo/
@@ -42,3 +43,21 @@ app-example
 # generated native folders
 /ios
 /android
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+docker-compose.override.yml
+

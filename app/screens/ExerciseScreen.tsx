@@ -1,8 +1,8 @@
 import GameOverModal from '@/components/exercise/GameOverModal';
 import SuccessModal from '@/components/exercise/SuccessModal';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, LayoutAnimation, StyleSheet, Vibration, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, LayoutAnimation, StyleSheet, Vibration, View, TouchableOpacity, Text } from 'react-native';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CheckFooter from '../../components/exercise/CheckFooter';
@@ -14,6 +14,7 @@ import { courseService } from '../../src/services/courseService';
 import { exerciseService } from '../../src/services/exerciseService';
 import { supabase } from '../../src/services/supabase';
 import { validateSolutionWithFeedback } from '../../src/utils/codeUtils';
+import CodeViewer from '../../components/exercise/CodeViewer';
 
 
 export default function ExerciseScreen() {
@@ -22,7 +23,19 @@ export default function ExerciseScreen() {
     const [exercises, setExercises] = useState<any[]>([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
+    const [showCode, setShowCode] = useState(false);
+    const debounceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [lives, setLives] = useState(5);
+
+    const handleCodeChange = useCallback((code: string) => {
+        if (debounceTimeout.current) {
+            clearTimeout(debounceTimeout.current);
+        }
+        debounceTimeout.current = setTimeout(() => {
+            console.log('[DEBUG] 🟠 onCodeChange (debounced) recibido de Blockly:', code);
+            setCurrentCode(code);
+        }, 500);
+    }, []);
     const [showSuccess, setShowSuccess] = useState(false);
     const [showNextExercise, setShowNextExercise] = useState(false);
     const [showGameOver, setShowGameOver] = useState(false);
@@ -65,29 +78,30 @@ export default function ExerciseScreen() {
 
 
     const checkSolution = async () => {
+        console.log('[DEBUG] 🔵 checkSolution ejecutado! currentCode:', currentCode);
+        console.trace('[DEBUG] Trace de checkSolution'); // Esto nos dirá quién lo llamó
         try {
             const currentExercise = exercises[currentIndex];
 
-            // Si Blockly no pudo generar código válido, es incorrecto automáticamente
+            // ── Código vacío o inválido: el usuario aún no terminó de armar los bloques.
+            // NO restamos vida — simplemente le avisamos que siga intentando.
             if (!currentCode || currentCode === '__INVALID_CODE__' || currentCode.trim() === '') {
-                Vibration.vibrate(500);
-                const newLives = lives - 1;
-                setLives(newLives);
-                if (newLives <= 0) {
-                    setShowGameOver(true);
-                } else {
-                    Alert.alert(
-                        "INTENTA DE NUEVO",
-                        "Los bloques no están conectados correctamente. Revisa el orden."
-                    );
-                }
-                return;
+                Alert.alert(
+                    "¡Casi!",
+                    "Conecta los bloques antes de comprobar."
+                );
+                return; // ← Sin penalización, sin quitar vidas
             }
+
+            console.log('[DEBUG] 🟢 Código del usuario:', JSON.stringify(currentCode));
+            console.log('[DEBUG] 🟣 Solución esperada:', JSON.stringify(currentExercise.solution_js));
 
             const { isCorrect, errorMessage } = validateSolutionWithFeedback(
                 currentCode,
                 currentExercise.solution_js
             );
+
+            console.log('[DEBUG] 🔴 Resultado:', isCorrect, '| Error:', errorMessage);
 
             if (isCorrect) {
                 if (currentIndex < exercises.length - 1) {
@@ -110,18 +124,12 @@ export default function ExerciseScreen() {
                 }
             }
         } catch (error) {
+            // Error inesperado: nunca penalizar, solo avisar
             console.error('Error en checkSolution:', error);
-            Vibration.vibrate(500);
-            const newLives = lives - 1;
-            setLives(newLives);
-            if (newLives <= 0) {
-                setShowGameOver(true);
-            } else {
-                Alert.alert(
-                    "INTENTA DE NUEVO",
-                    "Ocurrió un problema al verificar. Intenta reorganizar los bloques."
-                );
-            }
+            Alert.alert(
+                "¡Casi!",
+                "Ocurrió un problema al verificar. Revisa los bloques e intenta de nuevo."
+            );
         }
     };
 
@@ -132,10 +140,23 @@ export default function ExerciseScreen() {
 
             <MascotInstruction instruction={exercise.instruction} />
 
+            <View style={styles.toolbar}>
+                <TouchableOpacity 
+                    onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setShowCode(!showCode);
+                    }} 
+                    style={styles.toggleBtn}
+                >
+                    <Text style={styles.toggleText}>{showCode ? 'Ocultar Código' : '</> Ver Código'}</Text>
+                </TouchableOpacity>
+            </View>
+
             <View style={styles.editorContainer}>
+                {showCode && <CodeViewer code={currentCode} />}
                 <BlocklyEditor
                     toolboxConfig={exercise.toolbox_config}
-                    onCodeChange={setCurrentCode}
+                    onCodeChange={handleCodeChange}
                 />
             </View>
 
@@ -192,5 +213,24 @@ export default function ExerciseScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
+    toolbar: {
+        alignItems: 'flex-end',
+        paddingHorizontal: 20,
+        marginBottom: 5,
+        marginTop: 5,
+    },
+    toggleBtn: {
+        backgroundColor: '#F0F0F0',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#E0E0E0'
+    },
+    toggleText: {
+        color: '#555',
+        fontWeight: 'bold',
+        fontSize: 12,
+    },
     editorContainer: { flex: 1 }
 });
