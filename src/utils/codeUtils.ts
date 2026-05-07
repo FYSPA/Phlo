@@ -16,38 +16,32 @@ export const normalizeCode = (code: string): string => {
 };
 
 /**
- * Normaliza nombres de variables para que 'puntos' o 'i' sean equivalentes.
- * Busca declaraciones de variables y asignaciones.
+ * Limpia el código de Blockly: remueve saltos de línea repetidos, espacios extra.
+ * "var i;\n\n\ni = 20;" => "var i; i = 20"
  */
-export const anonymizeVariables = (code: string): string => {
+export const cleanBlocklyCode = (code: string): string => {
     if (!code) return "";
+    return code
+        .replace(/\n+/g, ' ')       // Saltos de línea a espacios
+        .replace(/\s+/g, ' ')       // Espacios múltiples a uno solo
+        .replace(/;\s*$/, '')       // Punto y coma final
+        .trim();
+};
 
-    const variables = new Map<string, string>(); // name -> __VAR_X__
-    let varIndex = 1;
-
-    const keywords = [
-        'var', 'let', 'const', 'if', 'else', 'for', 'while', 'function', 'return',
-        'true', 'false', 'null', 'undefined', 'console', 'log', 'Math', 'window', 'document'
-    ];
-
-    const contextRegex = /(?:var|let|const)\s+([a-zA-Z_$][0-9a-zA-Z_$]*)|([a-zA-Z_$][0-9a-zA-Z_$]*)\s*[-+*/]?=/g;
-    
-    let match;
-    while ((match = contextRegex.exec(code)) !== null) {
-        const varName = match[1] || match[2];
-        if (varName && !keywords.includes(varName) && !variables.has(varName)) {
-            variables.set(varName, `__VAR_${varIndex}__`);
-            varIndex++;
-        }
+/**
+ * Extrae información de variable y valor usando un Regex robusto.
+ * Soporta:
+ * - "var nombre = valor"
+ * - "var nombre; nombre = valor"
+ * - "nombre = valor"
+ */
+export const extractVariableInfo = (cleanedCode: string) => {
+    const regex = /^(?:(?:var|let|const)\s+[a-zA-Z_$]\w*\s*;\s*)?(?:var|let|const)?\s*([a-zA-Z_$]\w*)\s*=\s*(.+)$/;
+    const match = cleanedCode.match(regex);
+    if (match) {
+        return { name: match[1], value: match[2].trim() };
     }
-
-    let result = code;
-    for (const [name, token] of variables.entries()) {
-        const regex = new RegExp(`\\b${name}\\b`, 'g');
-        result = result.replace(regex, token);
-    }
-
-    return result;
+    return null;
 };
 
 /**
@@ -155,59 +149,6 @@ export const detectInvalidAssignment = (userCode: string): string | null => {
 };
 
 /**
- * Compara el código del usuario contra la solución esperada.
- * 
- * Retorna un objeto con:
- * - isCorrect: si la respuesta es válida
- * - errorMessage: mensaje amigable si hay un error (null si es correcto)
- */
-export const validateSolution = (userCode: string, expectedCode: string): boolean => {
-    try {
-        // 1. Verificar si hay una asignación inválida (esto no crashea, solo detecta)
-        const invalidMsg = detectInvalidAssignment(userCode);
-        if (invalidMsg) {
-            // Es un error de orden, pero no un crash. Retornamos false.
-            return false;
-        }
-
-        // Anonymize variables
-        const anonUserCode = anonymizeVariables(userCode);
-        const anonExpectedCode = anonymizeVariables(expectedCode);
-
-        // 2. Comparación normalizada exacta (funciona para la mayoría de casos)
-        if (normalizeCode(anonUserCode) === normalizeCode(anonExpectedCode)) {
-            return true;
-        }
-
-        // 3. Comparación flexible con conmutatividad
-        if (areExpressionsEquivalent(anonUserCode, anonExpectedCode)) {
-            return true;
-        }
-
-        // 4. Comparación línea por línea para código multilínea
-        const userLines = anonUserCode.trim().split('\n').map(l => normalizeCode(l)).filter(l => l.length > 0);
-        const expectedLines = anonExpectedCode.trim().split('\n').map(l => normalizeCode(l)).filter(l => l.length > 0);
-
-        if (userLines.length === expectedLines.length) {
-            const allMatch = userLines.every((line, i) => {
-                if (line === expectedLines[i]) return true;
-                // Intentar comparación flexible por línea
-                const userRawLine = anonUserCode.trim().split('\n')[i] || '';
-                const expectedRawLine = anonExpectedCode.trim().split('\n')[i] || '';
-                return areExpressionsEquivalent(userRawLine, expectedRawLine);
-            });
-            if (allMatch) return true;
-        }
-
-        return false;
-    } catch (error) {
-        // Nunca crashear, simplemente retornar false
-        console.error('Error en validateSolution:', error);
-        return false;
-    }
-};
-
-/**
  * Versión extendida que retorna un mensaje de error descriptivo.
  * Usar cuando necesites mostrar feedback al usuario.
  */
@@ -219,10 +160,50 @@ export const validateSolutionWithFeedback = (userCode: string, expectedCode: str
             return { isCorrect: false, errorMessage: invalidMsg };
         }
 
-        const isCorrect = validateSolution(userCode, expectedCode);
+        const cleanedUser = cleanBlocklyCode(userCode);
+        const cleanedExpected = cleanBlocklyCode(expectedCode);
+
+        const expectedInfo = extractVariableInfo(cleanedExpected);
+        const userInfo = extractVariableInfo(cleanedUser);
+
+        // Si la solución esperada es una asignación
+        if (expectedInfo) {
+            if (!userInfo) {
+                return { isCorrect: false, errorMessage: "Los bloques no están en el orden correcto." };
+            }
+
+            // Validar Nombre de Variable (Estricto)
+            if (expectedInfo.name !== userInfo.name) {
+                return {
+                    isCorrect: false,
+                    errorMessage: `El nombre de la variable debe ser '${expectedInfo.name}'.`
+                };
+            }
+
+            // Validar Valor (Soporta conmutatividad y normalización)
+            const isValueCorrect =
+                normalizeCode(userInfo.value) === normalizeCode(expectedInfo.value) ||
+                areExpressionsEquivalent(userInfo.value, expectedInfo.value);
+
+            if (!isValueCorrect) {
+                return { isCorrect: false, errorMessage: "El valor asignado no es correcto." };
+            }
+
+            return { isCorrect: true, errorMessage: null };
+        }
+
+        // Si no es una asignación, hacer validación general (exacta o flexible)
+        const isGeneralCorrect =
+            normalizeCode(cleanedUser) === normalizeCode(cleanedExpected) ||
+            areExpressionsEquivalent(cleanedUser, cleanedExpected);
+
+        if (isGeneralCorrect) {
+            return { isCorrect: true, errorMessage: null };
+        }
+
         return {
-            isCorrect,
-            errorMessage: isCorrect ? null : 'Los bloques no están en el orden correcto.',
+            isCorrect: false,
+            errorMessage: 'Los bloques no están en el orden correcto.',
         };
     } catch (error) {
         console.error('Error en validateSolutionWithFeedback:', error);
@@ -231,4 +212,11 @@ export const validateSolutionWithFeedback = (userCode: string, expectedCode: str
             errorMessage: 'Ocurrió un error al validar. Intenta reorganizar los bloques.',
         };
     }
+};
+
+/**
+ * Compara el código del usuario contra la solución esperada.
+ */
+export const validateSolution = (userCode: string, expectedCode: string): boolean => {
+    return validateSolutionWithFeedback(userCode, expectedCode).isCorrect;
 };
