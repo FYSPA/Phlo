@@ -2,7 +2,6 @@ import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-
 interface Props {
   toolboxConfig: any;
   onCodeChange: (code: string) => void;
@@ -145,18 +144,84 @@ export default function BlocklyEditor({ toolboxConfig, onCodeChange }: Props) {
 
             const origShowEditor = Blockly.FieldVariable.prototype.showEditor_;
             Blockly.FieldVariable.prototype.showEditor_ = function() {
-              const variable = this.getVariable();
+              // DEBUG: verificar si esta función se ejecuta
+              try {
+                window.ReactNativeWebView.postMessage(
+                  JSON.stringify({ type: 'debug', message: 'showEditor_ LLAMADO' })
+                );
+              } catch(e) {}
+
+              var variable = this.getVariable();
               if (!variable) {
+                try {
+                  window.ReactNativeWebView.postMessage(
+                    JSON.stringify({ type: 'debug', message: 'showEditor_: variable es NULL, usando original' })
+                  );
+                } catch(e) {}
                 origShowEditor.call(this);
                 return;
               }
-              const oldName = variable.name;
-              const promptText = 'Renombrar variable "' + oldName + '" a:';
-              Blockly.Variables.promptName(promptText, oldName, function(newName) {
-                if (newName) {
-                  workspace.renameVariableById(variable.getId(), newName);
+              var oldName = variable.name;
+              var varId = variable.getId();
+
+              try {
+                window.ReactNativeWebView.postMessage(
+                  JSON.stringify({ type: 'debug', message: 'showEditor_: variable=' + oldName + ', abriendo modal...' })
+                );
+              } catch(e) {}
+              
+              // Usar un modal HTML personalizado porque window.prompt no funciona en React Native WebView
+              setTimeout(function() {
+                try {
+                  var modalOverlay = document.createElement('div');
+                  modalOverlay.id = 'renameModal';
+                  modalOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:10000;';
+
+                  var modalContent = document.createElement('div');
+                  modalContent.style.cssText = 'background:white;padding:20px;border-radius:16px;width:80%;box-shadow:0 4px 12px rgba(0,0,0,0.2);font-family:sans-serif;';
+
+                  modalContent.innerHTML = '<h3 style="margin-top:0;color:#333;">Renombrar variable</h3>'
+                    + '<input id="renameInput" type="text" value="' + oldName + '" style="width:100%;padding:10px;margin:10px 0 20px;border:2px solid #E5E5E5;border-radius:8px;font-size:16px;box-sizing:border-box;" />'
+                    + '<div style="display:flex;justify-content:flex-end;gap:10px;">'
+                    + '<button id="renameCancelBtn" style="padding:10px 16px;border:none;background:#F7F7F7;color:#777;border-radius:8px;font-weight:bold;">Cancelar</button>'
+                    + '<button id="renameSaveBtn" style="padding:10px 16px;border:none;background:#58CC02;color:white;border-radius:8px;font-weight:bold;">Guardar</button>'
+                    + '</div>';
+
+                  modalOverlay.appendChild(modalContent);
+                  document.body.appendChild(modalOverlay);
+
+                  document.getElementById('renameCancelBtn').onclick = function() {
+                    document.body.removeChild(modalOverlay);
+                  };
+                  document.getElementById('renameSaveBtn').onclick = function() {
+                    var newName = document.getElementById('renameInput').value.trim();
+                    if (newName && newName !== oldName) {
+                      workspace.renameVariableById(varId, newName);
+                    }
+                    document.body.removeChild(modalOverlay);
+                  };
+
+                  // Cerrar al tocar fuera del modal
+                  modalOverlay.onclick = function(e) {
+                    if (e.target === modalOverlay) {
+                      document.body.removeChild(modalOverlay);
+                    }
+                  };
+
+                  setTimeout(function() {
+                    document.getElementById('renameInput').focus();
+                    document.getElementById('renameInput').select();
+                  }, 150);
+
+                  window.ReactNativeWebView.postMessage(
+                    JSON.stringify({ type: 'debug', message: 'Modal de renombrado CREADO exitosamente' })
+                  );
+                } catch(err) {
+                  window.ReactNativeWebView.postMessage(
+                    JSON.stringify({ type: 'debug', message: 'ERROR creando modal: ' + err.message })
+                  );
                 }
-              });
+              }, 50);
             };
 
             // ─── PAPELERA: LÓGICA DE DROP ZONE ─────────────────
@@ -251,47 +316,39 @@ export default function BlocklyEditor({ toolboxConfig, onCodeChange }: Props) {
               }
             });
 
-            // ─── Generadores seguros para bloques problemáticos ───
-            // Envolvemos los generadores de bloques específicos en try/catch
-            // para que nunca lancen errores, sin importar cómo se conecten.
-            
-            const safeWrapGenerator = function(blockType) {
-              const original = Blockly.JavaScript[blockType];
-              if (original) {
-                Blockly.JavaScript[blockType] = function(block) {
-                  try {
-                    return original.call(this, block);
-                  } catch (e) {
-                    // Si el generador falla, retorna un string vacío seguro
-                    return ['', Blockly.JavaScript.ORDER_NONE];
-                  }
-                };
-              }
+            // ─── PROTECCIÓN GLOBAL CONTRA CRASHES ───
+            // Captura CUALQUIER error no atrapado dentro del WebView
+            window.onerror = function(message, source, lineno, colno, error) {
+              window.ReactNativeWebView.postMessage(
+                JSON.stringify({ type: 'error', message: String(message) })
+              );
+              return true; // Previene que el error se propague
             };
 
-            // Proteger los generadores más comunes
-            safeWrapGenerator('math_number');
-            safeWrapGenerator('variables_set');
-            safeWrapGenerator('variables_get');
-            safeWrapGenerator('math_arithmetic');
-            safeWrapGenerator('text');
-            safeWrapGenerator('text_print');
-            safeWrapGenerator('logic_compare');
+            // ─── Función segura para generar código ───
+            function safeGenerateCode() {
+              try {
+                var code = Blockly.JavaScript.workspaceToCode(workspace);
+                return code || '';
+              } catch (e) {
+                return '__INVALID_CODE__';
+              }
+            }
 
             // ─── Listener de cambios para el código ───
             workspace.addChangeListener(function(event) {
+              if (!event) return;
+              
               // Solo actualizar código cuando cambia algo relevante
               if (event.type === Blockly.Events.BLOCK_MOVE ||
                   event.type === Blockly.Events.BLOCK_CHANGE ||
                   event.type === Blockly.Events.BLOCK_CREATE ||
                   event.type === Blockly.Events.BLOCK_DELETE) {
+                var code = safeGenerateCode();
                 try {
-                  const code = Blockly.JavaScript.workspaceToCode(workspace);
-                  window.ReactNativeWebView.postMessage(code || '');
+                  window.ReactNativeWebView.postMessage(code);
                 } catch (e) {
-                  // Si la generación de código falla, enviar marcador de error
-                  // para que ExerciseScreen sepa que hay un problema
-                  window.ReactNativeWebView.postMessage('__INVALID_CODE__');
+                  // Si incluso postMessage falla, no hacer nada
                 }
               }
             });
@@ -306,7 +363,35 @@ export default function BlocklyEditor({ toolboxConfig, onCodeChange }: Props) {
       <WebView
         originWhitelist={['*']}
         source={{ html }}
-        onMessage={(event) => onCodeChange(event.nativeEvent.data)}
+        onMessage={(event) => {
+          try {
+            const data = event.nativeEvent.data;
+            // Verificar si es un mensaje JSON del WebView (error o debug)
+            if (data.startsWith('{')) {
+              const parsed = JSON.parse(data);
+              if (parsed.type === 'error') {
+                console.warn('[BlocklyWebView Error]:', parsed.message);
+                return;
+              }
+              if (parsed.type === 'debug') {
+                console.log('[BlocklyWebView DEBUG]:', parsed.message);
+                return;
+              }
+            }
+            // Es código normal, enviarlo al padre
+            onCodeChange(data);
+          } catch (e) {
+            // Si el parse falla, es código normal (no JSON)
+            onCodeChange(event.nativeEvent.data);
+          }
+        }}
+        onError={(syntheticEvent) => {
+          const { nativeEvent } = syntheticEvent;
+          console.warn('[WebView Error]:', nativeEvent.description || nativeEvent);
+        }}
+        onRenderProcessGone={() => {
+          console.warn('[WebView] Render process crashed — reloading');
+        }}
         javaScriptEnabled={true}
         style={{ flex: 1 }}
         scrollEnabled={false}
