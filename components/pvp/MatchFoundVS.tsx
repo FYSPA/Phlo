@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { User } from 'lucide-react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 export default function MatchFoundVS() {
     const slideLeft = useSharedValue(-400);
@@ -11,18 +11,11 @@ export default function MatchFoundVS() {
 
     useEffect(() => {
         bgOpacity.value = withTiming(1, { duration: 500, easing: Easing.inOut(Easing.ease) });
-        
+
         // Efecto de choque: entran rápido y rebotan
         slideLeft.value = withSpring(0, { damping: 10, stiffness: 80, mass: 0.5 });
         slideRight.value = withSpring(0, { damping: 10, stiffness: 80, mass: 0.5 });
-        
-        // El VS aparece después con un impacto
-        vsScale.value = withDelay(400, 
-            withSequence(
-                withSpring(1.5, { damping: 10, stiffness: 100 }),
-                withSpring(1, { damping: 8, stiffness: 100 })
-            )
-        );
+
     }, []);
 
     const leftStyle = useAnimatedStyle(() => ({
@@ -43,8 +36,7 @@ export default function MatchFoundVS() {
 
     return (
         <Animated.View style={[styles.container, bgStyle]}>
-            <Text style={styles.title}>¡Oponente Encontrado!</Text>
-            
+
             <View style={styles.matchup}>
                 <Animated.View style={[styles.playerCard, leftStyle]}>
                     <View style={[styles.avatar, { borderColor: '#00E5FF' }]}>
@@ -66,10 +58,6 @@ export default function MatchFoundVS() {
                     <Text style={styles.playerRank}>1255 🏆</Text>
                 </Animated.View>
             </View>
-            
-            <Animated.Text style={[styles.subtitle, vsStyle]}>
-                PREPÁRATE...
-            </Animated.Text>
         </Animated.View>
     );
 }
@@ -110,7 +98,7 @@ const styles = StyleSheet.create({
     avatar: {
         width: 110,
         height: 110,
-        borderRadius: 24, 
+        borderRadius: 24,
         backgroundColor: '#1A1A2E',
         borderWidth: 4,
         justifyContent: 'center',

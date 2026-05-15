@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Linking from 'expo-linking';
-import { supabase } from '../../src/services/supabase';
+import { supabase } from '../../../src/services/supabase';
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState('');
@@ -10,7 +10,7 @@ export default function ForgotPassword() {
     const handleResetRequest = async () => {
         setLoading(true);
         // Creamos la URL correcta dinámica (para Expo Go: exp://..., para instalada: phlo://...)
-        const redirectUrl = Linking.createURL('/screens/UpdatePasswordScreen');
+        const redirectUrl = Linking.createURL('/screens/auth/UpdatePasswordScreen');
         console.log("URL de redirección:", redirectUrl); // Útil para copiar la URL y pegarla en Supabase
         
         const { error } = await supabase.auth.resetPasswordForEmail(email, {

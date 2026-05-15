@@ -36,11 +36,31 @@ export const cleanBlocklyCode = (code: string): string => {
  * - "nombre = valor"
  */
 export const extractVariableInfo = (cleanedCode: string) => {
-    const regex = /^(?:(?:var|let|const)\s+[a-zA-Z_$]\w*\s*;\s*)?(?:var|let|const)?\s*([a-zA-Z_$]\w*)\s*=\s*(.+)$/;
-    const match = cleanedCode.match(regex);
+    // Normalizar: eliminar saltos de línea y espacios extra
+    const normalized = cleanedCode.replace(/\s+/g, ' ').trim();
+
+    // Patrón 1: "var nombre = valor" (todo en una línea)
+    let match = normalized.match(/^(?:var|let|const)\s+([a-zA-Z_$]\w*)\s*=\s*(.+)$/);
     if (match) {
+        console.log('[DEBUG] extractVariableInfo: patrón 1 match:', match[1], match[2]);
         return { name: match[1], value: match[2].trim() };
     }
+
+    // Patrón 2: "var nombre; nombre = valor" (separado por punto y coma)
+    match = normalized.match(/^(?:var|let|const)\s+([a-zA-Z_$]\w*)\s*;.*?([a-zA-Z_$]\w*)\s*=\s*(.+)$/);
+    if (match) {
+        console.log('[DEBUG] extractVariableInfo: patrón 2 match:', match[1], 'valor:', match[3]);
+        return { name: match[1], value: match[3].trim() };
+    }
+
+    // Patrón 3: Solo "nombre = valor"
+    match = normalized.match(/^([a-zA-Z_$]\w*)\s*=\s*(.+)$/);
+    if (match) {
+        console.log('[DEBUG] extractVariableInfo: patrón 3 match:', match[1], match[2]);
+        return { name: match[1], value: match[2].trim() };
+    }
+
+    console.log('[DEBUG] extractVariableInfo: Sin match para:', normalized);
     return null;
 };
 
@@ -154,7 +174,9 @@ export const detectInvalidAssignment = (userCode: string): string | null => {
  */
 export const validateSolutionWithFeedback = (userCode: string, expectedCode: string): { isCorrect: boolean; errorMessage: string | null } => {
     try {
-        // Verificar asignación inválida primero
+        // console.log('[DEBUG] validateSolutionWithFeedback - userCode:', JSON.stringify(userCode));
+        // console.log('[DEBUG] validateSolutionWithFeedback - expectedCode:', JSON.stringify(expectedCode));
+
         const invalidMsg = detectInvalidAssignment(userCode);
         if (invalidMsg) {
             return { isCorrect: false, errorMessage: invalidMsg };
@@ -163,8 +185,14 @@ export const validateSolutionWithFeedback = (userCode: string, expectedCode: str
         const cleanedUser = cleanBlocklyCode(userCode);
         const cleanedExpected = cleanBlocklyCode(expectedCode);
 
+        // console.log('[DEBUG] cleanedUser:', JSON.stringify(cleanedUser));
+        // console.log('[DEBUG] cleanedExpected:', JSON.stringify(cleanedExpected));
+
         const expectedInfo = extractVariableInfo(cleanedExpected);
         const userInfo = extractVariableInfo(cleanedUser);
+
+        // console.log('[DEBUG] expectedInfo:', expectedInfo);
+        // console.log('[DEBUG] userInfo:', userInfo);
 
         // Si la solución esperada es una asignación
         if (expectedInfo) {

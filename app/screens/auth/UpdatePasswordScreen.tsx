@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { supabase } from '../../src/services/supabase';
+import { supabase } from '../../../src/services/supabase';
 
 export default function UpdatePassword() {
     const [password, setPassword] = useState('');
@@ -16,7 +16,7 @@ export default function UpdatePassword() {
             Alert.alert('Error', error.message);
         } else {
             Alert.alert('¡Éxito!', 'Tu contraseña ha sido actualizada.');
-            router.replace('/screens/LoginScreen');
+            router.replace('/screens/auth/LoginScreen');
         }
         setLoading(false);
     };
