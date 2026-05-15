@@ -197,6 +197,12 @@ export default function BlocklyEditor({ toolboxConfig, onCodeChange }: Props) {
                     var newName = document.getElementById('renameInput').value.trim();
                     if (newName && newName !== oldName) {
                       workspace.renameVariableById(varId, newName);
+                      // Forzar actualización de código tras renombrar
+                      var code = safeGenerateCode();
+                      window.ReactNativeWebView.postMessage(code);
+                      window.ReactNativeWebView.postMessage(
+                        JSON.stringify({ type: 'debug', message: 'Código actualizado tras renombrar: ' + code.replace(/\\n/g,' ') })
+                      );
                     }
                     document.body.removeChild(modalOverlay);
                   };
@@ -370,11 +376,11 @@ export default function BlocklyEditor({ toolboxConfig, onCodeChange }: Props) {
             if (data.startsWith('{')) {
               const parsed = JSON.parse(data);
               if (parsed.type === 'error') {
-                console.warn('[BlocklyWebView Error]:', parsed.message);
+                // console.warn('[BlocklyWebView Error]:', parsed.message);
                 return;
               }
               if (parsed.type === 'debug') {
-                console.log('[BlocklyWebView DEBUG]:', parsed.message);
+                // console.log('[BlocklyWebView DEBUG]:', parsed.message);
                 return;
               }
             }
@@ -387,10 +393,10 @@ export default function BlocklyEditor({ toolboxConfig, onCodeChange }: Props) {
         }}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
-          console.warn('[WebView Error]:', nativeEvent.description || nativeEvent);
+          // console.warn('[WebView Error]:', nativeEvent.description || nativeEvent);
         }}
         onRenderProcessGone={() => {
-          console.warn('[WebView] Render process crashed — reloading');
+          // console.warn('[WebView] Render process crashed — reloading');
         }}
         javaScriptEnabled={true}
         style={{ flex: 1 }}

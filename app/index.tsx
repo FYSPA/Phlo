@@ -1,4 +1,3 @@
-// app/index.tsx
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -9,7 +8,6 @@ export default function Page() {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        {/* Aquí podrías poner un logo o una imagen de un robot/personaje */}
         <View style={styles.logoContainer}>
           <Text style={styles.emoji}>🤖</Text>
           <Text style={styles.appName}>Phlo Code</Text>
@@ -20,14 +18,14 @@ export default function Page() {
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.button, styles.btnStart]}
-          onPress={() => router.push('/screens/RegisterScreen')} // O a una pantalla de Registro
+          onPress={() => router.push('/screens/auth/RegisterScreen')}
         >
           <Text style={styles.textStart}>Sign up</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.button, styles.btnLogin]}
-          onPress={() => router.push('/screens/LoginScreen')}
+          onPress={() => router.push('/screens/auth/LoginScreen')}
         >
           <Text style={styles.textLogin}>Log in</Text>
         </TouchableOpacity>

@@ -2,23 +2,36 @@ import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { supabase } from '../../src/services/supabase';
+import { supabase } from '../../../src/services/supabase';
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
     const router = useRouter();
+    const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    async function handleLogin() {
+    async function handleSignUp() {
+        if (!email || !password || !username) {
+            Alert.alert('Error', 'Por favor llena todos los campos');
+            return;
+        }
+
         setLoading(true);
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: { username: username }, // Se envía al Trigger de SQL
+            },
+        });
 
         if (error) {
-            Alert.alert('Error', 'Credenciales incorrectas');
+            Alert.alert('Error', error.message);
         } else {
-            // El layout.tsx detectará la sesión y te mandará al mapa automáticamente
+            Alert.alert('¡Éxito!', 'Revisa tu correo para confirmar tu cuenta');
+            router.replace('/screens/auth/LoginScreen');
         }
         setLoading(false);
     }
@@ -26,14 +39,22 @@ export default function LoginScreen() {
     return (
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
             <View style={styles.inner}>
-                <Text style={styles.title}>Ingresar</Text>
+                <Text style={styles.title}>Crea tu perfil</Text>
 
                 <TextInput
                     style={styles.input}
-                    placeholder="Correo"
+                    placeholder="Nombre de usuario"
+                    value={username}
+                    onChangeText={setUsername}
+                />
+
+                <TextInput
+                    style={styles.input}
+                    placeholder="Correo electrónico"
                     value={email}
                     onChangeText={setEmail}
                     autoCapitalize="none"
+                    keyboardType="email-address"
                 />
 
                 <View>
@@ -50,25 +71,18 @@ export default function LoginScreen() {
                 </View>
 
                 <TouchableOpacity
-                    style={[styles.button, { backgroundColor: '#1CB0F6', borderBottomColor: '#1899D6' }]}
-                    onPress={handleLogin}
+                    style={[styles.button, { backgroundColor: '#58CC02', borderBottomColor: '#46A302' }]}
+                    onPress={handleSignUp}
                     disabled={loading}
                 >
-                    <Text style={styles.buttonText}>{loading ? 'ENTRANDO...' : 'INICIAR SESIÓN'}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => router.push('/screens/RegisterScreen')}>
-                    <Text style={styles.linkText}>¿No tienes cuenta? Regístrate</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => router.push('/screens/ForgotPasswordScreen')}>
-                    <Text style={styles.linkText}>Se te olvido la contraseña? Restablecer</Text>
+                    <Text style={styles.buttonText}>{loading ? 'CREANDO...' : 'CREAR CUENTA'}</Text>
                 </TouchableOpacity>
             </View>
         </KeyboardAvoidingView>
     );
 }
 
+// Estilos compartidos (puedes moverlos a un archivo aparte luego)
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#fff' },
     inner: { flex: 1, padding: 24, justifyContent: 'center' },
@@ -90,7 +104,6 @@ const styles = StyleSheet.create({
         marginTop: 10,
     },
     buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
-    linkText: { color: '#1CB0F6', textAlign: 'center', marginTop: 20, fontWeight: 'bold' },
     eyeIcon: {
         position: 'absolute',
         right: 15,
