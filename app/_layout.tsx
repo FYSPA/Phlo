@@ -56,9 +56,8 @@ export default function RootLayout() {
 
     const isInsideTabs = currentSegments[0] === '(tabs)';
 
-    const publicScreens = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'UpdatePasswordScreen'];
-    const isPublicScreen = currentSegments.length > 1 && currentSegments[0] === 'screens' && publicScreens.includes(currentSegments[1]);
-
+const publicScreens = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'UpdatePasswordScreen'];
+    const isPublicScreen = currentSegments.length > 2 && currentSegments[0] === 'screens' && currentSegments[1] === 'auth' && publicScreens.includes(currentSegments[2] as string);
     const isInsideScreens = currentSegments[0] === 'screens';
     const inAuthGroup = isInsideTabs || (isInsideScreens && !isPublicScreen);
 
@@ -74,9 +73,9 @@ export default function RootLayout() {
   // 1. Calculamos la posición actual para decidir qué renderizar
   const currentSegments = segments as string[];
   const isInsideTabs = currentSegments[0] === '(tabs)';
-  const publicScreens = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'UpdatePasswordScreen'];
-  const isPublicScreen = currentSegments.length > 1 && currentSegments[0] === 'screens' && publicScreens.includes(currentSegments[1] as string);
-  const isInsideScreens = currentSegments[0] === 'screens';
+const publicScreens = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 'UpdatePasswordScreen'];
+    const isPublicScreen = currentSegments.length > 1 && currentSegments[0] === 'screens' && currentSegments[1] === 'auth' && publicScreens.includes(currentSegments[2] as string);
+    const isInsideScreens = currentSegments[0] === 'screens';
   const inAuthGroup = isInsideTabs || (isInsideScreens && !isPublicScreen);
 
   // 2. Decidimos si mostrar la carga (esperamos a la sesión Y a los datos del mapa)
@@ -104,7 +103,7 @@ export default function RootLayout() {
       // Chequeamos si es la ruta de recuperación manual o si la URL indica 'type=recovery' de Supabase
       if (path === 'update-password' || hostname === 'update-password' || url.includes('type=recovery') || access_token) {
         // Redirigimos a la pantalla una vez la sesión ya está establecida
-        router.push('/screens/UpdatePasswordScreen');
+        router.push('/screens/auth/UpdatePasswordScreen');
       }
     };
 
@@ -118,10 +117,10 @@ export default function RootLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="index" />
-      <Stack.Screen name="screens/LoginScreen" options={{ headerShown: true, title: 'Iniciar Sesión' }} />
-      <Stack.Screen name="screens/RegisterScreen" options={{ headerShown: true, title: 'Crear Cuenta' }} />
-      <Stack.Screen name="screens/ForgotPasswordScreen" options={{ headerShown: true, title: 'Recuperar Contraseña' }} />
-      <Stack.Screen name="screens/UpdatePasswordScreen" options={{ headerShown: true, title: 'Actualizar Contraseña' }} />
+      <Stack.Screen name="screens/auth/LoginScreen" options={{ headerShown: true, title: 'Iniciar Sesión' }} />
+      <Stack.Screen name="screens/auth/RegisterScreen" options={{ headerShown: true, title: 'Crear Cuenta' }} />
+      <Stack.Screen name="screens/auth/ForgotPasswordScreen" options={{ headerShown: true, title: 'Recuperar Contraseña' }} />
+      <Stack.Screen name="screens/auth/UpdatePasswordScreen" options={{ headerShown: true, title: 'Actualizar Contraseña' }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
   );

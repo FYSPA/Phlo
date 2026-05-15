@@ -30,10 +30,10 @@ export default function TabLayout() {
           paddingBottom: Platform.OS === 'ios' ? 20 : 10,
           paddingTop: 10,
           borderTopWidth: 0.5,
-          elevation: 10,
-          shadowColor: '#ffffffff',
+          elevation: 30,
+          shadowColor: '#000000ff',
           shadowOffset: { width: 0, height: 10 },
-          shadowOpacity: 0.15,
+          shadowOpacity: 1,
           shadowRadius: 20,
         },
         tabBarLabelStyle: {
