@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { Animated, Easing, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface GameOverModalProps {
@@ -8,7 +8,6 @@ interface GameOverModalProps {
 }
 
 export default function GameOverModal({ visible, onRetry, onHome }: GameOverModalProps) {
-    // Animaciones
     const overlayOpacity = useRef(new Animated.Value(0)).current;
     const heartScale = useRef(new Animated.Value(0.3)).current;
     const heartBeat = useRef(new Animated.Value(1)).current;
@@ -24,248 +23,267 @@ export default function GameOverModal({ visible, onRetry, onHome }: GameOverModa
     const titleOpacity = useRef(new Animated.Value(0)).current;
     const titleTranslateY = useRef(new Animated.Value(-20)).current;
     const shakeAnim = useRef(new Animated.Value(0)).current;
+    const heartOpacity = useRef(new Animated.Value(1)).current;
+    const particles = useRef<Animated.Value[]>([]);
+
+    useEffect(() => {
+        particles.current = Array.from({ length: 12 }, () => new Animated.Value(0));
+    }, []);
+
+    const resetAnimations = useCallback(() => {
+        overlayOpacity.setValue(0);
+        heartScale.setValue(0.3);
+        heartBeat.setValue(1);
+        crackProgress.setValue(0);
+        leftHalfX.setValue(0);
+        leftHalfRotate.setValue(0);
+        leftHalfY.setValue(0);
+        rightHalfX.setValue(0);
+        rightHalfRotate.setValue(0);
+        rightHalfY.setValue(0);
+        buttonsOpacity.setValue(0);
+        buttonsTranslateY.setValue(30);
+        titleOpacity.setValue(0);
+        titleTranslateY.setValue(-20);
+        shakeAnim.setValue(0);
+        heartOpacity.setValue(1);
+        particles.current.forEach(p => p.setValue(0));
+    }, []);
+
+    const runHeartbeatSequence = useCallback(() => {
+        return Animated.sequence([
+            Animated.timing(heartBeat, {
+                toValue: 1.15,
+                duration: 200,
+                easing: Easing.out(Easing.ease),
+                useNativeDriver: true,
+            }),
+            Animated.timing(heartBeat, {
+                toValue: 1,
+                duration: 200,
+                easing: Easing.in(Easing.ease),
+                useNativeDriver: true,
+            }),
+            Animated.timing(heartBeat, {
+                toValue: 1.2,
+                duration: 250,
+                easing: Easing.out(Easing.ease),
+                useNativeDriver: true,
+            }),
+            Animated.timing(heartBeat, {
+                toValue: 1,
+                duration: 200,
+                easing: Easing.in(Easing.ease),
+                useNativeDriver: true,
+            }),
+        ]);
+    }, []);
+
+    const runShakeSequence = useCallback(() => {
+        return Animated.sequence([
+            Animated.timing(shakeAnim, { toValue: 8, duration: 40, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: -8, duration: 40, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 6, duration: 40, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: -6, duration: 40, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 3, duration: 40, useNativeDriver: true }),
+            Animated.timing(shakeAnim, { toValue: 0, duration: 40, useNativeDriver: true }),
+        ]);
+    }, []);
+
+    const runSplitAnimation = useCallback(() => {
+        return Animated.parallel([
+            Animated.timing(leftHalfX, { toValue: -45, duration: 600, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+            Animated.timing(leftHalfRotate, { toValue: -12, duration: 600, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+            Animated.timing(leftHalfY, { toValue: 100, duration: 600, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+            Animated.timing(rightHalfX, { toValue: 45, duration: 600, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+            Animated.timing(rightHalfRotate, { toValue: 12, duration: 600, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+            Animated.timing(rightHalfY, { toValue: 100, duration: 600, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+        ]);
+    }, []);
+
+    const runParticles = useCallback(() => {
+        const particleAnimations = particles.current.map((_, i) => {
+            const angle = (i / particles.current.length) * 2 * Math.PI;
+            const distance = 60 + Math.random() * 40;
+            const translateX = Math.cos(angle) * distance;
+            const translateY = Math.sin(angle) * distance - 30;
+            
+            return Animated.parallel([
+                Animated.timing(particles.current[i], {
+                    toValue: 1,
+                    duration: 500,
+                    easing: Easing.out(Easing.quad),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(particles.current[i], {
+                    toValue: 0,
+                    duration: 500,
+                    delay: 100,
+                    easing: Easing.in(Easing.quad),
+                    useNativeDriver: true,
+                }),
+            ]);
+        });
+        
+        return Animated.stagger(20, particleAnimations);
+    }, []);
 
     useEffect(() => {
         if (visible) {
-            // Reset todos los valores
-            overlayOpacity.setValue(0);
-            heartScale.setValue(0.3);
-            heartBeat.setValue(1);
-            crackProgress.setValue(0);
-            leftHalfX.setValue(0);
-            leftHalfRotate.setValue(0);
-            leftHalfY.setValue(0);
-            rightHalfX.setValue(0);
-            rightHalfRotate.setValue(0);
-            rightHalfY.setValue(0);
-            buttonsOpacity.setValue(0);
-            buttonsTranslateY.setValue(30);
-            titleOpacity.setValue(0);
-            titleTranslateY.setValue(-20);
-            shakeAnim.setValue(0);
+            resetAnimations();
 
-            // Secuencia de animación cinematográfica
             Animated.sequence([
-                // 1. Fondo oscuro aparece
-                Animated.timing(overlayOpacity, {
-                    toValue: 1,
-                    duration: 400,
-                    useNativeDriver: true,
-                }),
-
-                // 2. El corazón aparece con un bounce
-                Animated.spring(heartScale, {
-                    toValue: 1,
-                    friction: 4,
-                    tension: 50,
-                    useNativeDriver: true,
-                }),
-
-                // 3. El corazón late 2 veces (como un último latido)
-                Animated.sequence([
-                    Animated.timing(heartBeat, {
-                        toValue: 1.15,
-                        duration: 200,
-                        easing: Easing.out(Easing.ease),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(heartBeat, {
-                        toValue: 1,
-                        duration: 200,
-                        easing: Easing.in(Easing.ease),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(heartBeat, {
-                        toValue: 1.2,
-                        duration: 250,
-                        easing: Easing.out(Easing.ease),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(heartBeat, {
-                        toValue: 1,
-                        duration: 200,
-                        easing: Easing.in(Easing.ease),
-                        useNativeDriver: true,
-                    }),
-                ]),
-
-                // 4. Pausa dramática
-                Animated.delay(300),
-
-                // 5. La grieta se dibuja
-                Animated.timing(crackProgress, {
-                    toValue: 1,
-                    duration: 800,
-                    easing: Easing.in(Easing.ease),
-                    useNativeDriver: true,
-                }),
-
-                // 6. Shake del corazón al quebrarse
-                Animated.sequence([
-                    Animated.timing(shakeAnim, { toValue: 6, duration: 50, useNativeDriver: true }),
-                    Animated.timing(shakeAnim, { toValue: -6, duration: 50, useNativeDriver: true }),
-                    Animated.timing(shakeAnim, { toValue: 5, duration: 50, useNativeDriver: true }),
-                    Animated.timing(shakeAnim, { toValue: -5, duration: 50, useNativeDriver: true }),
-                    Animated.timing(shakeAnim, { toValue: 3, duration: 50, useNativeDriver: true }),
-                    Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
-                ]),
-
-                // 7. Las mitades se separan y caen
-                Animated.parallel([
-                    Animated.timing(leftHalfX, {
-                        toValue: -40,
-                        duration: 700,
-                        easing: Easing.in(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(leftHalfRotate, {
-                        toValue: -15,
-                        duration: 700,
-                        easing: Easing.in(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(leftHalfY, {
-                        toValue: 80,
-                        duration: 700,
-                        easing: Easing.in(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(rightHalfX, {
-                        toValue: 40,
-                        duration: 700,
-                        easing: Easing.in(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(rightHalfRotate, {
-                        toValue: 15,
-                        duration: 700,
-                        easing: Easing.in(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(rightHalfY, {
-                        toValue: 80,
-                        duration: 700,
-                        easing: Easing.in(Easing.quad),
-                        useNativeDriver: true,
-                    }),
-                ]),
-
-                // 8. Pausa antes de los botones
+                Animated.timing(overlayOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+                
+                Animated.spring(heartScale, { toValue: 1, friction: 4, tension: 50, useNativeDriver: true }),
+                
+                runHeartbeatSequence(),
+                
                 Animated.delay(200),
-
-                // 9. Título y botones aparecen suavemente
+                
+                Animated.timing(crackProgress, { toValue: 1, duration: 600, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+                
+                runShakeSequence(),
+                
                 Animated.parallel([
-                    Animated.timing(titleOpacity, {
-                        toValue: 1,
-                        duration: 500,
-                        useNativeDriver: true,
-                    }),
-                    Animated.spring(titleTranslateY, {
-                        toValue: 0,
-                        friction: 8,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(buttonsOpacity, {
-                        toValue: 1,
-                        duration: 500,
-                        useNativeDriver: true,
-                    }),
-                    Animated.spring(buttonsTranslateY, {
-                        toValue: 0,
-                        friction: 8,
-                        useNativeDriver: true,
-                    }),
+                    runSplitAnimation(),
+                    runParticles(),
+                ]),
+                
+                Animated.timing(heartOpacity, { toValue: 0, duration: 300, delay: 100, useNativeDriver: true }),
+                
+                Animated.delay(150),
+                
+                Animated.parallel([
+                    Animated.timing(titleOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+                    Animated.spring(titleTranslateY, { toValue: 0, friction: 8, useNativeDriver: true }),
+                    Animated.timing(buttonsOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+                    Animated.spring(buttonsTranslateY, { toValue: 0, friction: 8, useNativeDriver: true }),
                 ]),
             ]).start();
         }
-    }, [visible]);
+    }, [visible, resetAnimations, runHeartbeatSequence, runShakeSequence, runSplitAnimation, runParticles]);
 
     const leftRotateInterp = leftHalfRotate.interpolate({
         inputRange: [-15, 0],
-        outputRange: ['-15deg', '0deg'],
+        outputRange: ['-12deg', '0deg'],
     });
 
     const rightRotateInterp = rightHalfRotate.interpolate({
         inputRange: [0, 15],
-        outputRange: ['0deg', '15deg'],
+        outputRange: ['0deg', '12deg'],
     });
+
+    const crackOpacity = crackProgress.interpolate({
+        inputRange: [0, 0.5, 1],
+        outputRange: [0, 0.8, 1],
+    });
+
+    const renderParticles = () => {
+        return particles.current.map((animValue, i) => {
+            const angle = (i / particles.current.length) * 2 * Math.PI;
+            const distance = 60 + (i % 3) * 20;
+            const translateX = Math.cos(angle) * distance;
+            const translateY = Math.sin(angle) * distance - 30;
+            
+            const opacity = animValue.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: [0, 1, 0],
+            });
+            
+            const scale = animValue.interpolate({
+                inputRange: [0, 0.5, 1],
+                outputRange: [0.3, 1, 0.3],
+            });
+
+            return (
+                <Animated.View
+                    key={i}
+                    style={[
+                        styles.particle,
+                        {
+                            opacity,
+                            transform: [
+                                { translateX },
+                                { translateY },
+                                { scale },
+                            ],
+                        },
+                    ]}
+                />
+            );
+        });
+    };
+
+    const heartScaleCombined = Animated.multiply(heartScale, heartBeat);
+    const heartTransform = [
+        { scale: heartScaleCombined },
+        { translateX: shakeAnim },
+    ];
 
     return (
         <Modal visible={visible} transparent animationType="none">
             <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
 
-                {/* Corazón animado */}
-                <Animated.View style={[styles.heartContainer, {
-                    transform: [
-                        { scale: Animated.multiply(heartScale, heartBeat) },
-                        { translateX: shakeAnim },
-                    ]
-                }]}>
-
-                    {/* Mitad izquierda del corazón */}
-                    <Animated.View style={[styles.heartHalfContainer, {
+                <Animated.View style={[styles.heartContainer, { transform: heartTransform }]}>
+                    <Animated.View style={[styles.heartHalfWrapper, {
                         transform: [
                             { translateX: leftHalfX },
                             { translateY: leftHalfY },
                             { rotate: leftRotateInterp },
-                        ]
+                        ],
+                        opacity: heartOpacity,
                     }]}>
-                        <View style={styles.heartHalfWrapper}>
-                            {/* Lóbulo izquierdo */}
-                            <View style={[styles.heartLobe, styles.heartLobeLeft]} />
-                            {/* Triángulo izquierdo (parte inferior) */}
+                        <View style={styles.heartLeftHalf}>
+                            <View style={styles.heartLobeLeft} />
                             <View style={styles.heartTriangleLeft} />
                         </View>
                     </Animated.View>
 
-                    {/* Mitad derecha del corazón */}
-                    <Animated.View style={[styles.heartHalfContainer, {
+                    <Animated.View style={[styles.heartHalfWrapper, {
                         transform: [
                             { translateX: rightHalfX },
                             { translateY: rightHalfY },
                             { rotate: rightRotateInterp },
-                        ]
+                        ],
+                        opacity: heartOpacity,
                     }]}>
-                        <View style={styles.heartHalfWrapper}>
-                            {/* Lóbulo derecho */}
-                            <View style={[styles.heartLobe, styles.heartLobeRight]} />
-                            {/* Triángulo derecho (parte inferior) */}
+                        <View style={styles.heartRightHalf}>
+                            <View style={styles.heartLobeRight} />
                             <View style={styles.heartTriangleRight} />
                         </View>
                     </Animated.View>
 
-                    {/* Línea de grieta (zigzag) que aparece progresivamente */}
-                    <Animated.View style={[styles.crackContainer, {
-                        opacity: crackProgress,
-                    }]}>
+                    <Animated.View style={[styles.crackContainer, { opacity: crackOpacity }]}>
                         <View style={styles.crackLine1} />
                         <View style={styles.crackLine2} />
                         <View style={styles.crackLine3} />
                         <View style={styles.crackLine4} />
                         <View style={styles.crackLine5} />
                     </Animated.View>
+
+                    <View style={styles.particlesContainer}>
+                        {renderParticles()}
+                    </View>
                 </Animated.View>
 
-                {/* Título */}
-                <Animated.View style={{
+                <Animated.View style={[styles.textContainer, {
                     opacity: titleOpacity,
                     transform: [{ translateY: titleTranslateY }],
-                    marginTop: 40,
-                }}>
-                    <Text style={styles.title}>¡Oh no!</Text>
+                }]}>
+                    <Text style={styles.title}>Game Over</Text>
                     <Text style={styles.subtitle}>Te quedaste sin vidas</Text>
                 </Animated.View>
 
-                {/* Botones */}
                 <Animated.View style={[styles.buttonsContainer, {
                     opacity: buttonsOpacity,
                     transform: [{ translateY: buttonsTranslateY }],
                 }]}>
-                    <TouchableOpacity style={styles.retryButton} onPress={onRetry}>
+                    <TouchableOpacity style={styles.retryButton} onPress={onRetry} activeOpacity={0.8}>
                         <Text style={styles.retryButtonText}>REINTENTAR</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.homeButton} onPress={onHome}>
+                    <TouchableOpacity style={styles.homeButton} onPress={onHome} activeOpacity={0.6}>
                         <Text style={styles.homeButtonText}>VOLVER AL INICIO</Text>
                     </TouchableOpacity>
                 </Animated.View>
@@ -274,13 +292,13 @@ export default function GameOverModal({ visible, onRetry, onHome }: GameOverModa
     );
 }
 
-const HEART_SIZE = 130;
+const HEART_SIZE = 120;
 const LOBE_SIZE = HEART_SIZE / 2;
 
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(20, 10, 15, 0.92)',
+        backgroundColor: 'rgba(15, 5, 10, 0.95)',
         justifyContent: 'center',
         alignItems: 'center',
     },
@@ -288,150 +306,198 @@ const styles = StyleSheet.create({
         width: HEART_SIZE,
         height: HEART_SIZE,
         position: 'relative',
-    },
-    heartHalfContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: HEART_SIZE,
-        height: HEART_SIZE,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     heartHalfWrapper: {
+        position: 'absolute',
+        width: HEART_SIZE / 2 + 2,
+        height: HEART_SIZE,
+        top: 0,
+        overflow: 'hidden',
+    },
+    heartLeftHalf: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
         width: HEART_SIZE,
         height: HEART_SIZE,
-        position: 'relative',
     },
-    // ─── Corazón construido con CSS ────────────────────
-    heartLobe: {
+    heartRightHalf: {
         position: 'absolute',
+        right: 0,
+        top: 0,
+        width: HEART_SIZE,
+        height: HEART_SIZE,
+    },
+    heartLobeLeft: {
+        position: 'absolute',
+        left: 0,
+        top: 0,
         width: LOBE_SIZE,
         height: LOBE_SIZE,
         borderRadius: LOBE_SIZE / 2,
         backgroundColor: '#FF4B4B',
-        top: 0,
-    },
-    heartLobeLeft: {
-        left: 1,
     },
     heartLobeRight: {
-        right: 1,
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        width: LOBE_SIZE,
+        height: LOBE_SIZE,
+        borderRadius: LOBE_SIZE / 2,
+        backgroundColor: '#FF4B4B',
     },
     heartTriangleLeft: {
         position: 'absolute',
-        top: LOBE_SIZE / 2,
         left: 0,
+        top: LOBE_SIZE / 2,
         width: 0,
         height: 0,
-        borderLeftWidth: HEART_SIZE / 2,
+        borderLeftWidth: LOBE_SIZE,
         borderRightWidth: 0,
-        borderBottomWidth: 0,
-        borderTopWidth: HEART_SIZE / 2 + 10,
+        borderTopWidth: LOBE_SIZE / 2 + 8,
         borderLeftColor: 'transparent',
         borderRightColor: 'transparent',
         borderTopColor: '#FF4B4B',
-        borderBottomColor: 'transparent',
     },
     heartTriangleRight: {
         position: 'absolute',
-        top: LOBE_SIZE / 2,
         right: 0,
+        top: LOBE_SIZE / 2,
         width: 0,
         height: 0,
         borderLeftWidth: 0,
-        borderRightWidth: HEART_SIZE / 2,
-        borderBottomWidth: 0,
-        borderTopWidth: HEART_SIZE / 2 + 10,
+        borderRightWidth: LOBE_SIZE,
+        borderTopWidth: LOBE_SIZE / 2 + 8,
         borderLeftColor: 'transparent',
         borderRightColor: 'transparent',
         borderTopColor: '#FF4B4B',
-        borderBottomColor: 'transparent',
     },
-    // ─── Línea de grieta (zigzag) ──────────────────────
     crackContainer: {
         position: 'absolute',
-        top: 5,
-        left: HEART_SIZE / 2 - 5,
-        width: 10,
-        height: HEART_SIZE - 10,
+        left: HEART_SIZE / 2 - 3,
+        top: 8,
+        width: 6,
+        height: HEART_SIZE - 16,
         zIndex: 10,
     },
     crackLine1: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
         width: 3,
-        height: 22,
-        backgroundColor: '#1a0a0f',
-        transform: [{ rotate: '8deg' }, { translateX: 2 }],
+        height: 20,
+        backgroundColor: '#0d0508',
+        transform: [{ rotate: '8deg' }],
     },
     crackLine2: {
+        position: 'absolute',
+        top: 16,
+        left: 1,
         width: 3,
-        height: 20,
-        backgroundColor: '#1a0a0f',
-        transform: [{ rotate: '-15deg' }, { translateX: -3 }],
+        height: 18,
+        backgroundColor: '#0d0508',
+        transform: [{ rotate: '-12deg' }],
     },
     crackLine3: {
-        width: 3,
-        height: 22,
-        backgroundColor: '#1a0a0f',
-        transform: [{ rotate: '12deg' }, { translateX: 3 }],
-    },
-    crackLine4: {
+        position: 'absolute',
+        top: 32,
+        left: 0,
         width: 3,
         height: 20,
-        backgroundColor: '#1a0a0f',
-        transform: [{ rotate: '-10deg' }, { translateX: -2 }],
+        backgroundColor: '#0d0508',
+        transform: [{ rotate: '10deg' }],
+    },
+    crackLine4: {
+        position: 'absolute',
+        top: 48,
+        left: 1,
+        width: 3,
+        height: 18,
+        backgroundColor: '#0d0508',
+        transform: [{ rotate: '-8deg' }],
     },
     crackLine5: {
+        position: 'absolute',
+        top: 64,
+        left: 0,
         width: 3,
-        height: 22,
-        backgroundColor: '#1a0a0f',
-        transform: [{ rotate: '6deg' }, { translateX: 1 }],
+        height: 20,
+        backgroundColor: '#0d0508',
+        transform: [{ rotate: '5deg' }],
     },
-    // ─── Texto ─────────────────────────────────────────
+    particlesContainer: {
+        position: 'absolute',
+        width: HEART_SIZE,
+        height: HEART_SIZE,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    particle: {
+        position: 'absolute',
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#FF6B6B',
+    },
+    textContainer: {
+        marginTop: 50,
+        alignItems: 'center',
+    },
     title: {
-        fontSize: 34,
+        fontSize: 42,
         fontWeight: '900',
         color: '#FF4B4B',
         textAlign: 'center',
-        letterSpacing: 1,
+        letterSpacing: 2,
+        textShadowColor: 'rgba(255, 75, 75, 0.5)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 10,
     },
     subtitle: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#AFAFAF',
+        fontSize: 18,
+        fontWeight: '500',
+        color: '#8A8A8A',
         textAlign: 'center',
-        marginTop: 8,
+        marginTop: 10,
     },
-    // ─── Botones ───────────────────────────────────────
     buttonsContainer: {
-        width: '85%',
-        marginTop: 50,
-        gap: 14,
+        width: '80%',
+        marginTop: 60,
+        gap: 16,
     },
     retryButton: {
         backgroundColor: '#FF4B4B',
-        padding: 18,
-        borderRadius: 16,
-        borderBottomWidth: 5,
-        borderBottomColor: '#CC3C3C',
+        paddingVertical: 18,
+        paddingHorizontal: 32,
+        borderRadius: 14,
         alignItems: 'center',
+        shadowColor: '#FF4B4B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
     },
     retryButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 18,
-        letterSpacing: 1.2,
+        color: '#FFFFFF',
+        fontWeight: '800',
+        fontSize: 17,
+        letterSpacing: 1.5,
     },
     homeButton: {
         backgroundColor: 'transparent',
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.2)',
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        borderColor: 'rgba(255, 255, 255, 0.15)',
         alignItems: 'center',
     },
     homeButtonText: {
-        color: '#AFAFAF',
-        fontWeight: 'bold',
-        fontSize: 16,
+        color: '#888888',
+        fontWeight: '600',
+        fontSize: 15,
         letterSpacing: 1,
     },
 });

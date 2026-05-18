@@ -48,6 +48,42 @@ export function getNextLeaguePoints(tier: LeagueTier): number {
     return LEAGUE_THRESHOLDS[tier] + 1000;
 }
 
+export function getLeagueDivision(leaguePoints: number): number {
+    const tier = getLeagueTier(leaguePoints);
+    const pointsInTier = leaguePoints - LEAGUE_THRESHOLDS[tier];
+    const division = Math.floor(pointsInTier / 250);
+    return Math.min(4, Math.max(1, 4 - division));
+}
+
+export function getLeagueProgress(leaguePoints: number): number {
+    const tier = getLeagueTier(leaguePoints);
+    const pointsInTier = leaguePoints - LEAGUE_THRESHOLDS[tier];
+    return (pointsInTier % 250) / 250 * 100;
+}
+
+export function getLeagueInfo(leaguePoints: number) {
+    const tier = getLeagueTier(leaguePoints);
+    const division = getLeagueDivision(leaguePoints);
+    const progress = getLeagueProgress(leaguePoints);
+    
+    const divisionNames: Record<number, string> = {
+        1: 'I',
+        2: 'II',
+        3: 'III',
+        4: 'IV'
+    };
+
+    return {
+        tier,
+        name: getLeagueName(tier),
+        division: divisionNames[division] || 'I',
+        points: leaguePoints,
+        nextThreshold: LEAGUE_THRESHOLDS[tier] + 1000,
+        pointsToNextTier: Math.max(0, 1000 - (leaguePoints - LEAGUE_THRESHOLDS[tier]) % 1000 - (leaguePoints - LEAGUE_THRESHOLDS[tier]) % 1000 % 1000),
+        progress,
+    };
+}
+
 export function getBotDifficulty(leaguePoints: number): number {
     const tier = getLeagueTier(leaguePoints);
     return BOT_DIFFICULTY[tier];
