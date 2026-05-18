@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { authService } from '../../src/services/authService';
+import { getLeagueInfo } from '../../src/utils/pvpUtils';
 import { ProfileHeader } from '../../components/profile/ProfileHeader';
 import { StatCard } from '../../components/profile/StatCard';
 import { SignOutButton } from '../../components/profile/SignOutButton';
+import LeagueCard from '../../components/profile/LeagueCard';
 
 export default function ProfileScreen() {
     const [profile, setProfile] = useState<any>(null);
@@ -39,22 +41,28 @@ export default function ProfileScreen() {
         </View>
     );
 
+    const leagueInfo = getLeagueInfo(profile?.league_points || 0);
+
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
 
-                {/* SECCIÓN DE AVATAR Y NOMBRE */}
                 <ProfileHeader username={profile?.username} />
 
-                {/* CONTENEDOR DE ESTADÍSTICAS (GRID) */}
+                <LeagueCard
+                    leagueName={leagueInfo.name}
+                    division={leagueInfo.division}
+                    points={leagueInfo.points}
+                    progress={leagueInfo.progress}
+                />
+
                 <View style={styles.statsGrid}>
                     <StatCard icon="🔥" value={profile?.streak || 0} label="Racha" />
                     <StatCard icon="⚡" value={profile?.xp || 0} label="Total XP" />
                     <StatCard icon="💎" value={profile?.gems || 0} label="Gemas" />
-                    <StatCard icon="🏆" value={1} label="Liga" />
+                    <StatCard icon="🎮" value={profile?.current_streak || 0} label="Partidas" />
                 </View>
 
-                {/* BOTÓN CERRAR SESIÓN */}
                 <SignOutButton onPress={handleSignOut} />
 
             </ScrollView>
