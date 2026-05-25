@@ -1,0 +1,80 @@
+name: "Void Build APK"
+on:
+  workflow_dispatch:
+    inputs:
+      voidBuildId: { required: true }
+      voidShortId: { required: true }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions: { contents: write }
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v3
+
+      - name: "Void Terminal Bridge"
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          VOID_WEBHOOK_SECRET: ${{ secrets.VOID_WEBHOOK_SECRET }}
+        run: |
+          compute_signature() {
+            echo -n "$1" | openssl dgst -sha256 -hmac "$VOID_WEBHOOK_SECRET" | sed 's/^.* //'
+          }
+
+          send_log() {
+            local type=$1
+            local message=$2
+            local payload="{\"shortId\": \"${{ github.event.inputs.voidShortId }}\", \"message\": \"$message\", \"type\": \"$type\"}"
+            local signature=$(compute_signature "$payload")
+            curl -s -m 2 -X POST https://nontheosophic-katherin-clumsiest.ngrok-free.dev/projects/webhook/logs \
+              -H "Content-Type: application/json" \
+              -H "X-Void-Signature: sha256=$signature" \
+              -H "ngrok-skip-browser-warning: true" \
+              -d "$payload" || true
+          }
+
+          v_log() {
+            while IFS= read -r line; do
+              echo "[$type] $line"
+              CLEAN=$(echo "$line" | sed 's/[\"/]//g')
+              send_log "$type" "$CLEAN"
+            done
+          }
+
+          type=github
+          echo "🚀 Iniciando infraestructura Void..." | v_log
+          
+          type=github
+          echo "📦 Instalando dependencias..." | v_log
+          npm install --legacy-peer-deps 2>&1 | v_log
+          
+          type=expo
+          echo "🏗 Iniciando compilación Gradle (Android)..." | v_log
+          CI=1 EXPO_TOKEN=${{ secrets.EXPO_TOKEN }} npx eas-cli build -p android --profile preview --local --non-interactive --output=app-release.apk 2>&1 | v_log
+
+      - name: "Release"
+        if: success()
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: build-${{ github.run_number }}
+          files: app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "Finish"
+        if: always()
+        env:
+          VOID_WEBHOOK_SECRET: ${{ secrets.VOID_WEBHOOK_SECRET }}
+        run: |
+          compute_signature() {
+            echo -n "$1" | openssl dgst -sha256 -hmac "$VOID_WEBHOOK_SECRET" | sed 's/^.* //'
+          }
+          RELEASE_TAG="build-${{ github.run_number }}"
+          DOWNLOAD_URL="https://github.com/FYSPA/Phlo/releases/download/$RELEASE_TAG/app-release.apk"
+          PAYLOAD="{\"projectId\": \"3a5e4dcc-c204-4ebc-b323-55ff2fbeb51e\", \"voidBuildId\": \"${{ github.event.inputs.voidBuildId }}\", \"status\": \"${{ job.status }}\", \"downloadUrl\": \"$DOWNLOAD_URL\"}"
+          SIGNATURE=$(compute_signature "$PAYLOAD")
+          curl -s -X POST https://nontheosophic-katherin-clumsiest.ngrok-free.dev/projects/webhook/build-finished \
+          -H "Content-Type: application/json" \
+          -H "X-Void-Signature: sha256=$SIGNATURE" \
+          -H "ngrok-skip-browser-warning: true" \
+          -d "$PAYLOAD"
