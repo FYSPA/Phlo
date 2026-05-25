@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,17 +12,15 @@ import { validateSolutionWithFeedback } from '../../../src/utils/codeUtils';
 import { calculateRewards, getLeagueTier } from '../../../src/utils/pvpUtils';
 import { Exercise, LeagueTier } from '../../../src/types/pvp';
 
-interface Props {
-    userId: string;
-    leaguePoints: number;
-}
-
 const ROUND_TIME = 30;
 const ROUNDS_TO_WIN = 3;
 const MAX_ROUNDS = 5;
 
-export default function BattleScreen({ userId, leaguePoints }: Props) {
+export default function BattleScreen() {
     const router = useRouter();
+    const params = useLocalSearchParams();
+    const userId = params.userId as string;
+    const leaguePoints = parseInt(params.leaguePoints as string) || 0;
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
@@ -168,7 +166,13 @@ export default function BattleScreen({ userId, leaguePoints }: Props) {
     }, [startBotThinking]);
 
     const handleRoundEnd = useCallback((result: 'win' | 'lose' | 'tie') => {
-        if (battleEndedRef.current) return;
+        console.log('[DEBUG] handleRoundEnd llamado:', result);
+        console.log('[DEBUG] p1Score:', p1ScoreRef.current, 'p2Score:', p2ScoreRef.current);
+        
+        if (battleEndedRef.current) {
+            console.log('[DEBUG] handleRoundEnd: battleEndedRef es true, returning');
+            return;
+        }
 
         setIsRoundActive(false);
         roundActiveRef.current = false;
@@ -176,28 +180,47 @@ export default function BattleScreen({ userId, leaguePoints }: Props) {
 
         if (result === 'win') {
             p1ScoreRef.current += 1;
+            console.log('[DEBUG] P1 gana ronda, nuevo score:', p1ScoreRef.current);
             setP1ScoreDisplay(p1ScoreRef.current);
         } else if (result === 'lose') {
             p2ScoreRef.current += 1;
+            console.log('[DEBUG] P2 gana ronda, nuevo score:', p2ScoreRef.current);
             setP2ScoreDisplay(p2ScoreRef.current);
         }
 
+        console.log('[DEBUG] Verificando fin de batalla...');
+        console.log('[DEBUG] p1Score >= 3?', p1ScoreRef.current >= ROUNDS_TO_WIN);
+        console.log('[DEBUG] p2Score >= 3?', p2ScoreRef.current >= ROUNDS_TO_WIN);
+        console.log('[DEBUG] ronda actual:', roundIndexRef.current, 'max:', MAX_ROUNDS);
+
         if (p1ScoreRef.current >= ROUNDS_TO_WIN || p2ScoreRef.current >= ROUNDS_TO_WIN) {
+            console.log('[DEBUG] Alguien alcanzó 3 puntos, llamando endBattle');
             setTimeout(endBattle, 1500);
         } else if (roundIndexRef.current + 1 >= MAX_ROUNDS) {
+            console.log('[DEBUG] Se acabaron las rondas, llamando endBattle');
             setTimeout(endBattle, 1500);
         } else {
+            console.log('[DEBUG] Avanzando a siguiente ronda');
             setTimeout(() => {
                 if (battleEndedRef.current) return;
                 setRoundResult(null);
                 roundIndexRef.current += 1;
+                console.log('[DEBUG] Nueva ronda:', roundIndexRef.current);
                 setCurrentRoundIndex(roundIndexRef.current);
             }, 2000);
         }
     }, [startBotThinking]);
 
     const endBattle = useCallback(() => {
-        if (battleEndedRef.current) return;
+        console.log('[DEBUG] endBattle EJECUTÁNDOSE');
+        console.log('[DEBUG] userId:', userId);
+        console.log('[DEBUG] Scores - P1:', p1ScoreRef.current, 'P2:', p2ScoreRef.current);
+        console.log('[DEBUG] battleEndedRef antes:', battleEndedRef.current);
+        
+        if (battleEndedRef.current) {
+            console.log('[DEBUG] endBattle: battleEndedRef ya era true, returning');
+            return;
+        }
         battleEndedRef.current = true;
         setBattleEnded(true);
 
@@ -206,6 +229,8 @@ export default function BattleScreen({ userId, leaguePoints }: Props) {
         const isVictory = p1ScoreRef.current > p2ScoreRef.current;
         const calculatedRewards = calculateRewards(p1ScoreRef.current, p2ScoreRef.current, true);
 
+        console.log('[DEBUG] Rewards:', calculatedRewards);
+
         setRewards(calculatedRewards);
 
         const newLeaguePoints = Math.max(0, leaguePoints + calculatedRewards.leaguePoints);
@@ -213,26 +238,102 @@ export default function BattleScreen({ userId, leaguePoints }: Props) {
 
         setNewLeague(newTier);
 
+        console.log('[DEBUG] Llamando updatePlayerStats');
         updatePlayerStats(calculatedRewards.xp, calculatedRewards.gems, calculatedRewards.leaguePoints);
 
+        console.log('[DEBUG] Mostrando BattleResultModal');
         setShowResultModal(true);
     }, [leaguePoints]);
 
     const updatePlayerStats = async (xpEarned: number, gemsEarned: number, leaguePointsEarned: number) => {
+        console.log('[DEBUG] updatePlayerStats iniciado');
+        console.log('[DEBUG] xpEarned:', xpEarned, 'gemsEarned:', gemsEarned, 'leaguePoints:', leaguePointsEarned);
+        console.log('[DEBUG] userId:', userId);
+        
+        // Check if userId is defined
+        if (!userId) {
+            console.error('[ERROR] userId is undefined, cannot update player stats');
+            // Try to get user from Supabase auth as fallback
+            try {
+                const { data: { user }, error } = await supabase.auth.getUser();
+                if (error) {
+                    console.error('[ERROR] Failed to get user from auth:', error);
+                    return;
+                }
+                if (!user) {
+                    console.error('[ERROR] No user found in auth');
+                    return;
+                }
+                console.log('[INFO] Using user ID from auth:', user.id);
+                // Temporarily use the auth user ID for this operation
+                const authUserId = user.id;
+                
+                console.log('[DEBUG] Obteniendo perfil...');
+                const { data: profile, error: selectError } = await supabase
+                    .from('profiles')
+                    .select('xp, gems, league_points')
+                    .eq('id', authUserId)
+                    .single();
+
+                console.log('[DEBUG] Perfil obtenido:', profile);
+                console.log('[DEBUG] Error al obtener:', selectError);
+
+                if (!profile) {
+                    console.log('[DEBUG] No se encontró perfil');
+                    return;
+                }
+
+                const newXp = (profile.xp || 0) + xpEarned;
+                const newGems = (profile.gems || 0) + gemsEarned;
+                const newLeaguePts = Math.max(0, (profile.league_points || 0) + leaguePointsEarned);
+
+                console.log('[DEBUG] Nuevos valores - xp:', newXp, 'gems:', newGems, 'league:', newLeaguePts);
+
+                const { error: updateError } = await supabase
+                    .from('profiles')
+                    .update({
+                        xp: newXp,
+                        gems: newGems,
+                        league_points: newLeaguePts,
+                    })
+                    .eq('id', authUserId);
+
+                console.log('[DEBUG] Error al actualizar:', updateError);
+
+                if (updateError) {
+                    console.error('Error updating stats:', updateError);
+                } else {
+                    console.log('[DEBUG] Stats actualizados correctamente');
+                }
+            } catch (authError) {
+                console.error('Error in updatePlayerStats with auth fallback:', authError);
+            }
+            return;
+        }
+        
         try {
-            const { data: profile } = await supabase
+            console.log('[DEBUG] Obteniendo perfil...');
+            const { data: profile, error: selectError } = await supabase
                 .from('profiles')
                 .select('xp, gems, league_points')
                 .eq('id', userId)
                 .single();
 
-            if (!profile) return;
+            console.log('[DEBUG] Perfil obtenido:', profile);
+            console.log('[DEBUG] Error al obtener:', selectError);
+
+            if (!profile) {
+                console.log('[DEBUG] No se encontró perfil');
+                return;
+            }
 
             const newXp = (profile.xp || 0) + xpEarned;
             const newGems = (profile.gems || 0) + gemsEarned;
             const newLeaguePts = Math.max(0, (profile.league_points || 0) + leaguePointsEarned);
 
-            const { error } = await supabase
+            console.log('[DEBUG] Nuevos valores - xp:', newXp, 'gems:', newGems, 'league:', newLeaguePts);
+
+            const { error: updateError } = await supabase
                 .from('profiles')
                 .update({
                     xp: newXp,
@@ -241,7 +342,13 @@ export default function BattleScreen({ userId, leaguePoints }: Props) {
                 })
                 .eq('id', userId);
 
-            if (error) console.error('Error updating stats:', error);
+            console.log('[DEBUG] Error al actualizar:', updateError);
+
+            if (updateError) {
+                console.error('Error updating stats:', updateError);
+            } else {
+                console.log('[DEBUG] Stats actualizados correctamente');
+            }
         } catch (e) {
             console.error('Error in updatePlayerStats:', e);
         }

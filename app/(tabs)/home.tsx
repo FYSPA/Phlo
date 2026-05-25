@@ -87,7 +87,8 @@ export default function LearnMap() {
                 : styles.nodeCurrent,
           ]}
           onPress={() =>
-            !isLocked && router.push(`/screens/ExerciseScreen?id=${item.id}`)
+            !isLocked &&
+            router.push(`/screens/exercise/ExerciseScreen?id=${item.id}`)
           }
           disabled={isLocked}
         >

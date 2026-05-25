@@ -2,7 +2,13 @@ import { Trophy, User } from 'lucide-react-native';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-export default function PvpHeader() {
+interface PvpHeaderProps {
+    username: string;
+    rank: string;
+    trophies: number;
+}
+
+export default function PvpHeader({ username, rank, trophies }: PvpHeaderProps) {
     return (
         <View style={styles.container}>
             <View style={styles.userInfo}>
@@ -10,13 +16,13 @@ export default function PvpHeader() {
                     <User color="#FFF" size={24} />
                 </View>
                 <View>
-                    <Text style={styles.username}>Jugador</Text>
-                    <Text style={styles.rank}>Liga Bronce III</Text>
+                    <Text style={styles.username}>{username}</Text>
+                    <Text style={styles.rank}>{rank}</Text>
                 </View>
             </View>
             <View style={styles.stats}>
                 <Trophy color="#FFD700" size={20} />
-                <Text style={styles.trophies}>1240</Text>
+                <Text style={styles.trophies}>{trophies}</Text>
             </View>
         </View>
     );
@@ -28,9 +34,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         padding: 20,
-        backgroundColor: 'rgba(255,255,255,0.05)',
+        backgroundColor: '#FFFFFF',
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
+        borderBottomColor: '#E5E7EB',
     },
     userInfo: {
         flexDirection: 'row',
@@ -40,30 +46,30 @@ const styles = StyleSheet.create({
         width: 48,
         height: 48,
         borderRadius: 24,
-        backgroundColor: '#FF0055',
+        backgroundColor: '#6366F1',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
     },
     username: {
-        color: '#000000ff',
+        color: '#1F2937',
         fontSize: 18,
         fontWeight: 'bold',
     },
     rank: {
-        color: '#A0A0A0',
+        color: '#6B7280',
         fontSize: 12,
     },
     stats: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: 'rgba(0,0,0,0.3)',
+        backgroundColor: '#FEF3C7',
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 16,
     },
     trophies: {
-        color: '#FFD700',
+        color: '#B45309',
         fontWeight: 'bold',
         marginLeft: 6,
         fontSize: 16,

@@ -39,8 +39,8 @@ export default function MatchFoundVS() {
 
             <View style={styles.matchup}>
                 <Animated.View style={[styles.playerCard, leftStyle]}>
-                    <View style={[styles.avatar, { borderColor: '#00E5FF' }]}>
-                        <User color="#FFF" size={50} />
+                    <View style={[styles.avatar, { borderColor: '#6366F1' }]}>
+                        <User color="#4F46E5" size={50} />
                     </View>
                     <Text style={styles.playerName}>Tú</Text>
                     <Text style={styles.playerRank}>1240 🏆</Text>
@@ -51,10 +51,10 @@ export default function MatchFoundVS() {
                 </Animated.View>
 
                 <Animated.View style={[styles.playerCard, rightStyle]}>
-                    <View style={[styles.avatar, { borderColor: '#FF0055' }]}>
-                        <User color="#FFF" size={50} />
+                    <View style={[styles.avatar, { borderColor: '#F43F5E' }]}>
+                        <User color="#E11D48" size={50} />
                     </View>
-                    <Text style={[styles.playerName, { color: '#FF0055' }]}>Rival_404</Text>
+                    <Text style={[styles.playerName, { color: '#E11D48' }]}>Rival_404</Text>
                     <Text style={styles.playerRank}>1255 🏆</Text>
                 </Animated.View>
             </View>
@@ -99,25 +99,25 @@ const styles = StyleSheet.create({
         width: 110,
         height: 110,
         borderRadius: 24,
-        backgroundColor: '#1A1A2E',
-        borderWidth: 4,
+        backgroundColor: '#EEF2F6',
+        borderWidth: 3,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 12,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.5,
-        shadowRadius: 10,
-        elevation: 10,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: 4,
     },
     playerName: {
-        color: '#00E5FF',
+        color: '#4F46E5',
         fontSize: 20,
-        fontWeight: '900',
+        fontWeight: '800',
         marginBottom: 4,
     },
     playerRank: {
-        color: '#A0A0A0',
+        color: '#4B5563',
         fontSize: 14,
         fontWeight: 'bold',
     },
@@ -125,21 +125,23 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: '#FFD700',
+        backgroundColor: '#F3F4F6',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
         justifyContent: 'center',
         alignItems: 'center',
         marginHorizontal: 15,
-        shadowColor: '#FFD700',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 20,
-        elevation: 15,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
         zIndex: 10,
     },
     vsText: {
-        color: '#121223',
-        fontSize: 22,
-        fontWeight: '900',
+        color: '#374151',
+        fontSize: 20,
+        fontWeight: '800',
         fontStyle: 'italic',
     }
 });

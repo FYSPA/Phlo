@@ -8,6 +8,7 @@ import MatchFoundVS from '../../components/pvp/MatchFoundVS';
 import PvpHeader from '../../components/pvp/PvpHeader';
 import SearchingRadar from '../../components/pvp/SearchingRadar';
 import { supabase } from '../../src/services/supabase';
+import { getLeagueInfo } from '../../src/utils/pvpUtils';
 
 type PvpState = 'idle' | 'searching' | 'found';
 
@@ -16,6 +17,7 @@ export default function PvP() {
     const [matchState, setMatchState] = useState<PvpState>('idle');
     const [userId, setUserId] = useState<string | null>(null);
     const [userLeaguePoints, setUserLeaguePoints] = useState(0);
+    const [username, setUsername] = useState('Jugador');
 
     useEffect(() => {
         loadUserData();
@@ -27,10 +29,11 @@ export default function PvP() {
             setUserId(user.id);
             const { data: profile } = await supabase
                 .from('profiles')
-                .select('league_points')
+                .select('username, league_points')
                 .eq('id', user.id)
                 .single();
             if (profile) {
+                setUsername(profile.username || user.email?.split('@')[0] || 'Jugador');
                 setUserLeaguePoints(profile.league_points);
             }
         }
@@ -58,7 +61,11 @@ export default function PvP() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <PvpHeader />
+            <PvpHeader
+                username={username}
+                rank={`${getLeagueInfo(userLeaguePoints).name} ${getLeagueInfo(userLeaguePoints).division}`}
+                trophies={userLeaguePoints}
+            />
 
             <View style={styles.content}>
                 {matchState === 'idle' && (
@@ -93,7 +100,7 @@ export default function PvP() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffffff',
+        backgroundColor: '#FFFFFF',
     },
     content: {
         flex: 1,
@@ -106,54 +113,62 @@ const styles = StyleSheet.create({
     },
     seasonInfo: {
         alignItems: 'center',
-        marginBottom: 80,
+        marginBottom: 40,
+        backgroundColor: '#F9FAFB',
+        paddingVertical: 20,
+        paddingHorizontal: 40,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#F3F4F6',
     },
     seasonTitle: {
-        color: '#000000ff',
-        fontSize: 32,
-        fontWeight: '900',
+        color: '#1F2937',
+        fontSize: 24,
+        fontWeight: '800',
         textTransform: 'uppercase',
-        letterSpacing: 2,
-        textShadowRadius: 10,
+        letterSpacing: 1.5,
     },
     seasonSubtitle: {
-        color: '#000000ff',
-        fontSize: 16,
-        fontWeight: 'bold',
-        marginTop: 8,
-        letterSpacing: 1,
+        color: '#6B7280',
+        fontSize: 14,
+        fontWeight: '600',
+        marginTop: 6,
+        letterSpacing: 0.5,
     },
     findMatchBtn: {
-        backgroundColor: '#FF0055',
+        backgroundColor: '#4F46E5',
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 18,
-        paddingHorizontal: 32,
-        borderRadius: 35,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.6,
-        shadowRadius: 15,
-        elevation: 10,
+        paddingVertical: 16,
+        paddingHorizontal: 36,
+        borderRadius: 30,
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 4,
     },
     btnIcon: {
-        marginRight: 12,
+        marginRight: 10,
     },
     findMatchText: {
         color: '#FFF',
-        fontSize: 20,
-        fontWeight: '900',
+        fontSize: 18,
+        fontWeight: '800',
         letterSpacing: 1,
     },
     modeSelector: {
-        marginTop: 30,
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        backgroundColor: '#F0F0F0',
+        marginTop: 24,
+        paddingVertical: 8,
+        paddingHorizontal: 16,
+        backgroundColor: '#F3F4F6',
         borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
     },
     modeLabel: {
-        fontSize: 14,
-        color: '#666',
+        fontSize: 13,
+        color: '#4B5563',
         fontWeight: '600',
     },
 });

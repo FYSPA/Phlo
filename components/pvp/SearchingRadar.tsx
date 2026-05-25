@@ -37,7 +37,7 @@ export default function SearchingRadar() {
                 <Animated.View style={[styles.ring, ring2Style]} />
                 
                 <View style={styles.avatar}>
-                    <User color="#FFF" size={40} />
+                    <User color="#4F46E5" size={40} />
                 </View>
             </View>
             
@@ -64,34 +64,34 @@ const styles = StyleSheet.create({
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#00E5FF',
+        backgroundColor: 'rgba(99, 102, 241, 0.15)',
     },
     avatar: {
         width: 100,
         height: 100,
         borderRadius: 50,
-        backgroundColor: '#1A1A2E',
-        borderWidth: 3,
-        borderColor: '#00E5FF',
+        backgroundColor: '#EEF2F6',
+        borderWidth: 2,
+        borderColor: '#6366F1',
         justifyContent: 'center',
         alignItems: 'center',
         zIndex: 10,
-        shadowColor: '#00E5FF',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.8,
-        shadowRadius: 15,
-        elevation: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: 3,
     },
     text: {
         marginTop: 80,
-        color: '#00E5FF',
+        color: '#1F2937',
         fontSize: 18,
         fontWeight: 'bold',
-        letterSpacing: 2,
+        letterSpacing: 1.5,
     },
     subtext: {
         marginTop: 8,
-        color: '#A0A0A0',
+        color: '#6B7280',
         fontSize: 14,
     }
 });
