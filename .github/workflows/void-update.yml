@@ -65,4 +65,4 @@ jobs:
           -H "Content-Type: application/json" \
           -H "X-Void-Signature: sha256=$SIGNATURE" \
           -H "ngrok-skip-browser-warning: true" \
-          -d "$PAYLOAD"
+          -d "$PAYLOAD" || true
