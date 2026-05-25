@@ -62,13 +62,14 @@ jobs:
           if [ -f app-release.apk ]; then
             echo "✅ APK encontrado: $(ls -lh app-release.apk | awk '{print $5}')" | v_log
           else
-            FOUND=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
+            FOUND=$(find . -type f ( -name "*.apk" -o -name "*.aab" ) 2>/dev/null | head -1)
             if [ -n "$FOUND" ]; then
-              echo "⚠️ APK encontrado en ruta diferente: $FOUND" | v_log
-              mv "$FOUND" app-release.apk
-              echo "✅ APK renombrado a app-release.apk" | v_log
+              echo "⚠️ Artefacto encontrado en: $FOUND" | v_log
+              cp "$FOUND" app-release.apk
+              echo "✅ Copiado a app-release.apk ($(ls -lh app-release.apk | awk '{print $5}'))" | v_log
             else
-              echo "❌ No se generó ningún archivo APK" | v_log
+              echo "❌ No se generó ningún archivo APK ni AAB" | v_log
+              ls -la android/app/build/outputs/ 2>/dev/null | v_log || true
             fi
           fi
 
@@ -97,4 +98,4 @@ jobs:
           -H "Content-Type: application/json" \
           -H "X-Void-Signature: sha256=$SIGNATURE" \
           -H "ngrok-skip-browser-warning: true" \
-          -d "$PAYLOAD"
+          -d "$PAYLOAD" || true
