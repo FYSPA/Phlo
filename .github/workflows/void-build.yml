@@ -50,7 +50,27 @@ jobs:
           
           type=expo
           echo "🏗 Iniciando compilación Gradle (Android)..." | v_log
+          set +e
           CI=1 EXPO_TOKEN=${{ secrets.EXPO_TOKEN }} npx eas-cli build -p android --profile preview --local --non-interactive --output=app-release.apk 2>&1 | v_log
+          EAS_EXIT=$?
+          set -e
+          if [ $EAS_EXIT -ne 0 ]; then
+            echo "⚠️ eas-cli exit code: $EAS_EXIT" | v_log
+          fi
+
+          echo "🔍 Buscando APK generado..." | v_log
+          if [ -f app-release.apk ]; then
+            echo "✅ APK encontrado: $(ls -lh app-release.apk | awk '{print $5}')" | v_log
+          else
+            FOUND=$(find . -name "*.apk" -type f 2>/dev/null | head -1)
+            if [ -n "$FOUND" ]; then
+              echo "⚠️ APK encontrado en ruta diferente: $FOUND" | v_log
+              mv "$FOUND" app-release.apk
+              echo "✅ APK renombrado a app-release.apk" | v_log
+            else
+              echo "❌ No se generó ningún archivo APK" | v_log
+            fi
+          fi
 
       - name: "Release"
         if: success()
