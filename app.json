@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Phlo",
-    "slug": "Phlo",
+    "slug": "void-test",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +19,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.v0id.orchestrator.app"
     },
     "web": {
       "output": "static",
@@ -43,6 +44,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "owner": "fyspa",
+    "extra": {
+      "eas": {
+        "projectId": "3328ce10-de26-4a29-9df5-44b9a727759b"
+      }
     }
   }
 }
