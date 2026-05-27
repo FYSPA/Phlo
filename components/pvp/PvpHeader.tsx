@@ -13,7 +13,7 @@ export default function PvpHeader({ username, rank, trophies }: PvpHeaderProps) 
         <View style={styles.container}>
             <View style={styles.userInfo}>
                 <View style={styles.avatarPlaceholder}>
-                    <User color="#FFF" size={24} />
+                    <User color="#FFF" size={24}  {...({ color: '#FFF' } as any)} />
                 </View>
                 <View>
                     <Text style={styles.username}>{username}</Text>
@@ -21,7 +21,7 @@ export default function PvpHeader({ username, rank, trophies }: PvpHeaderProps) 
                 </View>
             </View>
             <View style={styles.stats}>
-                <Trophy color="#FFD700" size={20} />
+                <Trophy color="#FFD700" size={20} {...({ color: '#FFD700' } as any)} />
                 <Text style={styles.trophies}>{trophies}</Text>
             </View>
         </View>

@@ -1,8 +1,8 @@
+import { useRouter } from 'expo-router';
 import { Swords } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 
 import MatchFoundVS from '../../components/pvp/MatchFoundVS';
 import PvpHeader from '../../components/pvp/PvpHeader';
@@ -80,7 +80,7 @@ export default function PvP() {
                             onPress={() => setMatchState('searching')}
                             activeOpacity={0.8}
                         >
-                            <Swords color="#FFF" size={28} style={styles.btnIcon} />
+                            <Swords color="#FFF" size={28}  {...({ color: 'red' } as any)} style={styles.btnIcon} />
                             <Text style={styles.findMatchText}>BUSCAR BATALLA</Text>
                         </TouchableOpacity>
 

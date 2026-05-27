@@ -56,7 +56,7 @@ export default function TabLayout() {
         options={{
           title: 'Arena PvP',
           tabBarIcon: ({ color, focused }) => (
-            <Swords size={focused ? 28 : 24} color={color} />
+            <Swords size={focused ? 28 : 24} color={color} {...({ color: color } as any)} />
           ),
         }}
       />
