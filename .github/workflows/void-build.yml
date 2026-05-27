@@ -60,13 +60,18 @@ jobs:
 
           echo "🔍 Buscando APK generado..." | v_log
           if [ -f app-release.apk ]; then
-            echo "✅ APK encontrado: $(ls -lh app-release.apk | awk '{print $5}')" | v_log
+            SIZE=$(stat -c%s app-release.apk 2>/dev/null || echo "?")
+            echo "✅ APK encontrado (${SIZE} bytes)" | v_log
           else
-            FOUND=$(find . -type f ( -name "*.apk" -o -name "*.aab" ) 2>/dev/null | head -1)
+            FOUND=$(find . -name "*.apk" 2>/dev/null | head -1)
+            if [ -z "$FOUND" ]; then
+              FOUND=$(find . -name "*.aab" 2>/dev/null | head -1)
+            fi
             if [ -n "$FOUND" ]; then
               echo "⚠️ Artefacto encontrado en: $FOUND" | v_log
               cp "$FOUND" app-release.apk
-              echo "✅ Copiado a app-release.apk ($(ls -lh app-release.apk | awk '{print $5}'))" | v_log
+              SIZE=$(stat -c%s app-release.apk 2>/dev/null || echo "?")
+              echo "✅ Copiado a app-release.apk (${SIZE} bytes)" | v_log
             else
               echo "❌ No se generó ningún archivo APK ni AAB" | v_log
               ls -la android/app/build/outputs/ 2>/dev/null | v_log || true
