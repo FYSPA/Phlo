@@ -9,11 +9,13 @@ import {
   View,
 } from "react-native";
 import { courseService } from "../../src/services/courseService";
+import LevelModal from "../../components/map/LevelModal";
 
 const { width } = Dimensions.get("window");
 
 export default function LearnMap() {
   const [lessons, setLessons] = useState<any[]>([]);
+  const [selectedLevel, setSelectedLevel] = useState<any | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -88,15 +90,17 @@ export default function LearnMap() {
           ]}
           onPress={() =>
             !isLocked &&
-            router.push(`/screens/exercise/ExerciseScreen?id=${item.id}`)
+            setSelectedLevel({
+              id: item.id,
+              title: item.title,
+              levelNumber: index + 1,
+              isCompleted,
+            })
           }
           disabled={isLocked}
         >
           <Text style={styles.levelNumber}>{index + 1}</Text>
         </TouchableOpacity>
-        <View style={styles.lessonTitleContainer}>
-          <Text style={styles.lessonTitle}>{item.title}</Text>
-        </View>
       </View>
     );
   };
@@ -120,6 +124,20 @@ export default function LearnMap() {
         // Optimización: Solo renderiza lo que está cerca de la pantalla
         initialNumToRender={10}
         windowSize={5}
+      />
+
+      <LevelModal
+        visible={selectedLevel !== null}
+        onClose={() => setSelectedLevel(null)}
+        onStart={() => {
+          if (selectedLevel) {
+            router.push(`/screens/exercise/ExerciseScreen?id=${selectedLevel.id}`);
+            setSelectedLevel(null);
+          }
+        }}
+        levelNumber={selectedLevel?.levelNumber || 0}
+        levelTitle={selectedLevel?.title || ""}
+        isCompleted={selectedLevel?.isCompleted || false}
       />
     </View>
   );
