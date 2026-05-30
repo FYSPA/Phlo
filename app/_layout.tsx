@@ -1,7 +1,7 @@
 import { Session } from '@supabase/supabase-js';
 import * as Linking from 'expo-linking';
 import { Stack, useRootNavigationState, useRouter, useSegments } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import LoadingScreen from '../components/common/LoadingScreen';
 import { courseService } from '../src/services/courseService';
 import { supabase } from '../src/services/supabase';
@@ -14,15 +14,15 @@ export default function RootLayout() {
   const rootNavigationState = useRootNavigationState();
   const url = Linking.useURL();
   const router = useRouter();
+  const pendingRecoveryRef = useRef(false);
+  const deepLinkHandledRef = useRef(false);
 
   useEffect(() => {
-    // 1. Obtener sesión inicial con un retraso artificial para mejorar la UX
     const initAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       
       if (session) {
-        // Pre-fetch de los niveles mientras el robot está en pantalla
         try {
           await courseService.getLevels();
         } catch (e) {
@@ -31,7 +31,6 @@ export default function RootLayout() {
       }
       setDataReady(true);
 
-      // Mínimo 2 segundos de animación para que se sienta fluido
       setTimeout(() => {
         setInitialized(true);
       }, 2000);
@@ -48,9 +47,27 @@ export default function RootLayout() {
     };
   }, []);
 
+  // Capturar URL inicial en frío (getInitialURL) y cualquier URL posterior (useURL)
   useEffect(() => {
-    if (!initialized) return;
-    if (!rootNavigationState?.key) return;
+    Linking.getInitialURL().then((initialUrl) => {
+      if (initialUrl && !deepLinkHandledRef.current) {
+        handleDeepLink(initialUrl);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (url && !deepLinkHandledRef.current) {
+      handleDeepLink(url);
+    }
+  }, [url]);
+
+  // Navegación diferida: esperar a que el layout esté listo
+  useEffect(() => {
+    if (!initialized || !rootNavigationState?.key) return;
+
+    // Si hay una navegación de recovery pendiente, no redirigir automáticamente
+    if (pendingRecoveryRef.current) return;
 
     const currentSegments = segments as string[];
 
@@ -64,11 +81,50 @@ const publicScreens = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 
     if (!session && inAuthGroup) {
       router.replace('/');
     }
-    else if (session && (!inAuthGroup || isPublicScreen || currentSegments.length === 0)) {
-      router.replace('/(tabs)/home');
+    else if (session) {
+      // No redirigir si está en UpdatePasswordScreen (viene del flujo de recovery)
+      const isOnUpdatePassword =
+        currentSegments.length >= 3 &&
+        currentSegments[0] === 'screens' &&
+        currentSegments[1] === 'auth' &&
+        currentSegments[2] === 'UpdatePasswordScreen';
+
+      if (!isOnUpdatePassword && (!inAuthGroup || isPublicScreen || currentSegments.length === 0)) {
+        router.replace('/(tabs)/home');
+      }
     }
   }, [session, initialized, segments, rootNavigationState?.key]);
 
+  const handleDeepLink = async (deepLinkUrl: string) => {
+    try {
+      const access_token = deepLinkUrl.match(/access_token=([^&]+)/)?.[1];
+      const refresh_token = deepLinkUrl.match(/refresh_token=([^&]+)/)?.[1];
+
+      if (access_token && refresh_token) {
+        await supabase.auth.setSession({
+          access_token,
+          refresh_token,
+        });
+      }
+
+      const isRecovery = deepLinkUrl.includes('type=recovery') || !!access_token;
+
+      if (isRecovery) {
+        deepLinkHandledRef.current = true;
+        pendingRecoveryRef.current = true;
+      }
+    } catch (e) {
+      console.error('Error handling deep link:', e);
+    }
+  };
+
+  // Navegación pendiente por recovery: se ejecuta cuando el layout está listo
+  useEffect(() => {
+    if (pendingRecoveryRef.current && initialized && rootNavigationState?.key) {
+      pendingRecoveryRef.current = false;
+      router.push('/screens/auth/UpdatePasswordScreen');
+    }
+  }, [initialized, rootNavigationState?.key]);
 
   // 1. Calculamos la posición actual para decidir qué renderizar
   const currentSegments = segments as string[];
@@ -79,36 +135,12 @@ const publicScreens = ['LoginScreen', 'RegisterScreen', 'ForgotPasswordScreen', 
   const inAuthGroup = isInsideTabs || (isInsideScreens && !isPublicScreen);
 
   // 2. Decidimos si mostrar la carga (esperamos a la sesión Y a los datos del mapa)
-  const showLoading = !initialized || !dataReady || (session && !inAuthGroup);
-
-
-  useEffect(() => {
-    const handleDeepLink = async () => {
-      if (!url) return;
-
-      // Extraemos tokens manualmente de la URL sin importar si vienen como query (?) o hash (#)
-      const access_token = url.match(/access_token=([^&]+)/)?.[1];
-      const refresh_token = url.match(/refresh_token=([^&]+)/)?.[1];
-
-      // Si llegaron los tokens en el link temporal, iniciamos sesión "invisible"
-      if (access_token && refresh_token) {
-        await supabase.auth.setSession({
-          access_token: access_token,
-          refresh_token: refresh_token
-        });
-      }
-
-      const { hostname, path } = Linking.parse(url);
-
-      // Chequeamos si es la ruta de recuperación manual o si la URL indica 'type=recovery' de Supabase
-      if (path === 'update-password' || hostname === 'update-password' || url.includes('type=recovery') || access_token) {
-        // Redirigimos a la pantalla una vez la sesión ya está establecida
-        router.push('/screens/auth/UpdatePasswordScreen');
-      }
-    };
-
-    handleDeepLink();
-  }, [url]);
+  const isOnUpdatePassword =
+    currentSegments.length >= 3 &&
+    currentSegments[0] === 'screens' &&
+    currentSegments[1] === 'auth' &&
+    currentSegments[2] === 'UpdatePasswordScreen';
+  const showLoading = !initialized || !dataReady || (session && !inAuthGroup && !isOnUpdatePassword);
 
   if (showLoading) {
     return <LoadingScreen />;

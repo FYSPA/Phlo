@@ -9,9 +9,11 @@ export default function ForgotPassword() {
 
     const handleResetRequest = async () => {
         setLoading(true);
-        // Creamos la URL correcta dinámica (para Expo Go: exp://..., para instalada: phlo://...)
+
+        // Generamos la URL dinámica de Expo Go para que abra la app al hacer clic
         const redirectUrl = Linking.createURL('/screens/auth/UpdatePasswordScreen');
-        console.log("URL de redirección:", redirectUrl); // Útil para copiar la URL y pegarla en Supabase
+        console.log("URL de redirección (cópiala y pégala en Supabase):", redirectUrl);
+        console.log("O usa el wildcard: exp://*");
         
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: redirectUrl,

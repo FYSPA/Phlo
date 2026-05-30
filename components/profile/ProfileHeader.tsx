@@ -6,9 +6,9 @@ interface ProfileHeaderProps {
     role?: string;
 }
 
-export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ username, role = 'Estudiante de DuoCode' }) => {
+export const ProfileHeader: React.FC<ProfileHeaderProps> = ({ username, role = 'Estudiante de Phlo (Admin)' }) => {
     const initial = username?.charAt(0).toUpperCase() || 'U';
-    
+
     return (
         <View style={styles.profileHeader}>
             <View style={styles.avatarCircle}>

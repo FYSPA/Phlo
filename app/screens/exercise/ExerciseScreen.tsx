@@ -1,15 +1,16 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Vibration, View } from 'react-native';
 import { useSharedValue, withSpring } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import CheckFooter from '../../../components/exercise/CheckFooter';
+import ErrorModal from '../../../components/exercise/ErrorModal';
 import ExerciseContent from '../../../components/exercise/ExerciseContent';
 import ExerciseHeader from '../../../components/exercise/ExerciseHeader';
 import ExerciseToolbar from '../../../components/exercise/ExerciseToolbar';
 import GameOverModal from '../../../components/exercise/GameOverModal';
 import NextExerciseModal from '../../../components/exercise/NextExerciseModal';
 import SuccessModal from '../../../components/exercise/SuccessModal';
-import CheckFooter from '../../../components/exercise/CheckFooter';
 import { useExerciseState } from '../../../hooks/useExerciseState';
 import { useLives } from '../../../hooks/useLives';
 import { courseService } from '../../../src/services/courseService';
@@ -23,6 +24,7 @@ export default function ExerciseScreen() {
     const [showSuccess, setShowSuccess] = useState(false);
     const [showNextExercise, setShowNextExercise] = useState(false);
     const [showGameOver, setShowGameOver] = useState(false);
+    const [showError, setShowError] = useState(false);
 
     const { lives, loseLife, reset: resetLives } = useLives(5);
     const { exercises, currentIndex, currentCode, setCurrentCode, loadExercises, advanceToNext, reset: resetExercises } = useExerciseState(id as string);
@@ -54,7 +56,7 @@ export default function ExerciseScreen() {
 
     const checkSolution = async () => {
         if (!currentCode || currentCode === '__INVALID_CODE__' || currentCode.trim() === '') {
-            Alert.alert('¡Casi!', 'Conecta los bloques antes de comprobar.');
+            setShowError(true);
             return;
         }
 
@@ -72,7 +74,8 @@ export default function ExerciseScreen() {
             if (lives <= 1) {
                 setShowGameOver(true);
             } else {
-                Alert.alert('INTENTA DE NUEVO', errorMessage || 'Los bloques no están en el orden correcto.');
+                // Alert.alert('INTENTA DE NUEVO', errorMessage || 'Los bloques no están en el orden correcto.');
+                Vibration.vibrate(100);
             }
         }
     };
@@ -115,15 +118,18 @@ export default function ExerciseScreen() {
                 onNext={() => {
                     setShowSuccess(false);
                     router.replace('/(tabs)/home');
+                    Vibration.vibrate(500);
                 }}
                 onNextLevel={async () => {
                     setShowSuccess(false);
                     const nextLevelId = await courseService.getNextLevelId(id as string);
                     if (nextLevelId) {
                         router.replace(`/screens/exercise/ExerciseScreen?id=${nextLevelId}`);
+                        Vibration.vibrate(200);
                     } else {
                         Alert.alert('¡Felicidades!', 'Has completado todos los niveles disponibles.');
                         router.replace('/(tabs)/home');
+                        Vibration.vibrate(500);
                     }
                 }}
                 xp={10}
@@ -141,7 +147,13 @@ export default function ExerciseScreen() {
                 onHome={() => {
                     setShowGameOver(false);
                     router.replace('/(tabs)/home');
+                    Vibration.vibrate(500);
                 }}
+            />
+
+            <ErrorModal
+                visible={showError}
+                onClose={() => setShowError(false)}
             />
         </SafeAreaView>
     );

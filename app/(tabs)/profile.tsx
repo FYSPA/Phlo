@@ -1,12 +1,14 @@
+import { FontAwesome5 } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { authService } from '../../src/services/authService';
-import { getLeagueInfo } from '../../src/utils/pvpUtils';
+import LeagueCard from '../../components/profile/LeagueCard';
 import { ProfileHeader } from '../../components/profile/ProfileHeader';
 import { StatCard } from '../../components/profile/StatCard';
-import { SignOutButton } from '../../components/profile/SignOutButton';
-import LeagueCard from '../../components/profile/LeagueCard';
+import { authService } from '../../src/services/authService';
+import { getLeagueInfo } from '../../src/utils/pvpUtils';
+
 
 export default function ProfileScreen() {
     const [profile, setProfile] = useState<any>(null);
@@ -27,13 +29,6 @@ export default function ProfileScreen() {
         }
     }
 
-    async function handleSignOut() {
-        try {
-            await authService.signOut();
-        } catch (error: any) {
-            Alert.alert('Error', error.message);
-        }
-    }
 
     if (loading) return (
         <View style={styles.loadingContainer}>
@@ -46,7 +41,12 @@ export default function ProfileScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <ScrollView contentContainerStyle={styles.scrollContent}>
-
+                <TouchableOpacity
+                    style={styles.settingsButton}
+                    onPress={() => router.push('/screens/settings/SettigsScreen')}
+                >
+                    <FontAwesome5 name="cog" size={24} color="black" />
+                </TouchableOpacity>
                 <ProfileHeader username={profile?.username} />
 
                 <LeagueCard
@@ -62,9 +62,6 @@ export default function ProfileScreen() {
                     <StatCard icon="💎" value={profile?.gems || 0} label="Gemas" />
                     <StatCard icon="🎮" value={profile?.current_streak || 0} label="Partidas" />
                 </View>
-
-                <SignOutButton onPress={handleSignOut} />
-
             </ScrollView>
         </SafeAreaView>
     );
@@ -90,5 +87,12 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         width: '100%',
         marginBottom: 30
+    },
+    settingsButton: {
+        position: 'absolute',
+        top: 20,
+        right: 20,
+        zIndex: 10,
+        padding: 10,
     },
 });
