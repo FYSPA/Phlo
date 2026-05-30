@@ -46,7 +46,11 @@ jobs:
           type=github
           echo "📦 Preparando bundle de JavaScript..." | v_log
           npm install --legacy-peer-deps 2>&1 | v_log
-          
+                    type=github
+          echo "🔧 Inyectando variables de entorno..." | v_log
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+
           type=expo
           echo "🚀 Publicando actualización en Expo..." | v_log
           EXPO_TOKEN=${{ secrets.EXPO_TOKEN }} npx eas-cli update --branch preview --message "VoidSync" --non-interactive 2>&1 | v_log
