@@ -49,8 +49,8 @@ jobs:
           npm install --legacy-peer-deps 2>&1 | v_log
                     type=github
           echo "🔧 Inyectando variables de entorno..." | v_log
-          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
-          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          echo "EXPO_PUBLIC_SUPABASE_URL=${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}" >> .env
+          echo "EXPO_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
 
           type=expo
           echo "🏗 Iniciando compilación Gradle (Android)..." | v_log
