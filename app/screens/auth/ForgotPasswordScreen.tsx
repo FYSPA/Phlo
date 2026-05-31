@@ -1,80 +1,121 @@
-import * as Linking from 'expo-linking';
-import React, { useCallback, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import ErrorAuthModal from '../../../components/auth/ErrorAuthModal';
-import MailModal from '../../../components/auth/MailModal';
-import { supabase } from '../../../src/services/supabase';
+import * as Linking from "expo-linking";
+import React, { useCallback, useState } from "react";
+import {
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from "react-native";
+import MailModal from "../../../components/auth/MailModal";
+import ErrorPropsModal from "../../../components/common/ErrorPropsModal";
+import { supabase } from "../../../src/services/supabase";
 
 export default function ForgotPassword() {
-    const [email, setEmail] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [showMailModal, setShowMailModal] = useState(false);
-    const [showErrorModal, setShowErrorModal] = useState(false);
-    const [errorMessage, setErrorMessage] = useState('');
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showMailModal, setShowMailModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-    const sendResetEmail = useCallback(async () => {
-        const redirectUrl = Linking.createURL('/screens/auth/UpdatePasswordScreen');
-        console.log("URL de redirección:", redirectUrl);
+  const sendResetEmail = useCallback(async () => {
+    const redirectUrl = Linking.createURL("/screens/auth/UpdatePasswordScreen");
+    console.log("URL de redirección:", redirectUrl);
 
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: redirectUrl,
-        });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl,
+    });
 
-        if (error) throw error;
-    }, [email]);
+    if (error) throw error;
+  }, [email]);
 
-    const handleResetRequest = async () => {
-        setLoading(true);
-        try {
-            await sendResetEmail();
-            setShowMailModal(true);
-        } catch (e: any) {
-            setShowErrorModal(true);
-            setErrorMessage(e?.message || 'Error al enviar el correo');
-        }
-        setLoading(false);
-    };
+  const handleResetRequest = async () => {
+    setLoading(true);
+    try {
+      await sendResetEmail();
+      setShowMailModal(true);
+    } catch (e: any) {
+      setShowErrorModal(true);
+      setErrorMessage(e?.message || "Error al enviar el correo");
+    }
+    setLoading(false);
+  };
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Recuperar contraseña</Text>
-            <Text style={styles.subtitle}>Te enviaremos un correo para que puedas crear una nueva.</Text>
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Recuperar contraseña</Text>
+      <Text style={styles.subtitle}>
+        Te enviaremos un correo para que puedas crear una nueva.
+      </Text>
 
-            <TextInput
-                style={styles.input}
-                placeholder="Tu correo electrónico"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-            />
+      <TextInput
+        style={styles.input}
+        placeholder="Tu correo electrónico"
+        value={email}
+        onChangeText={setEmail}
+        autoCapitalize="none"
+      />
 
-            <TouchableOpacity
-                style={[styles.button, { backgroundColor: '#1CB0F6', borderBottomColor: '#1899D6' }]}
-                onPress={handleResetRequest}
-                disabled={loading}
-            >
-                <Text style={styles.buttonText}>{loading ? 'ENVIANDO...' : 'ENVIAR CORREO'}</Text>
-            </TouchableOpacity>
+      <TouchableOpacity
+        style={[
+          styles.button,
+          { backgroundColor: "#1CB0F6", borderBottomColor: "#1899D6" },
+        ]}
+        onPress={handleResetRequest}
+        disabled={loading}
+      >
+        <Text style={styles.buttonText}>
+          {loading ? "ENVIANDO..." : "ENVIAR CORREO"}
+        </Text>
+      </TouchableOpacity>
 
-            <MailModal
-                visible={showMailModal}
-                onClose={() => setShowMailModal(false)}
-            />
+      <MailModal
+        visible={showMailModal}
+        onClose={() => setShowMailModal(false)}
+      />
 
-            <ErrorAuthModal
-                visible={showErrorModal}
-                message={errorMessage}
-                onClose={() => setShowErrorModal(false)}
-            />
-        </View>
-    );
+      <ErrorPropsModal
+        visible={showErrorModal}
+        message={errorMessage}
+        onClose={() => setShowErrorModal(false)}
+      />
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: '#fff', padding: 24, justifyContent: 'center' },
-    title: { fontSize: 24, fontWeight: 'bold', color: '#4B4B4B', textAlign: 'center' },
-    subtitle: { fontSize: 16, color: '#777', textAlign: 'center', marginBottom: 30, marginTop: 10 },
-    input: { backgroundColor: '#F7F7F7', padding: 16, borderRadius: 16, borderWidth: 2, borderColor: '#E5E5E5', marginBottom: 20 },
-    button: { padding: 16, borderRadius: 16, borderBottomWidth: 4, alignItems: 'center' },
-    buttonText: { color: '#fff', fontWeight: 'bold', fontSize: 18 }
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+    padding: 24,
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#4B4B4B",
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 16,
+    color: "#777",
+    textAlign: "center",
+    marginBottom: 30,
+    marginTop: 10,
+  },
+  input: {
+    backgroundColor: "#F7F7F7",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: "#E5E5E5",
+    marginBottom: 20,
+  },
+  button: {
+    padding: 16,
+    borderRadius: 16,
+    borderBottomWidth: 4,
+    alignItems: "center",
+  },
+  buttonText: { color: "#fff", fontWeight: "bold", fontSize: 18 },
 });

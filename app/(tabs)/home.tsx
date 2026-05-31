@@ -8,8 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { courseService } from "../../src/services/courseService";
 import LevelModal from "../../components/map/LevelModal";
+import { courseService } from "../../src/services/courseService";
 
 const { width } = Dimensions.get("window");
 
@@ -131,7 +131,9 @@ export default function LearnMap() {
         onClose={() => setSelectedLevel(null)}
         onStart={() => {
           if (selectedLevel) {
-            router.push(`/screens/exercise/ExerciseScreen?id=${selectedLevel.id}`);
+            router.push(
+              `/screens/exercise/ExerciseScreen?id=${selectedLevel.id}`,
+            );
             setSelectedLevel(null);
           }
         }}
@@ -189,7 +191,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.5)",
     padding: 2,
     borderRadius: 20,
-    backdropFilter: "blur(20px)",
+    //backdropFilter: "blur(20px)",
   },
   lessonTitleContainer: {},
 });
