@@ -1,26 +1,37 @@
-import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import * as Linking from 'expo-linking';
+import React, { useCallback, useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import ErrorAuthModal from '../../../components/auth/ErrorAuthModal';
+import MailModal from '../../../components/auth/MailModal';
 import { supabase } from '../../../src/services/supabase';
 
 export default function ForgotPassword() {
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
+    const [showMailModal, setShowMailModal] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
-    const handleResetRequest = async () => {
-        setLoading(true);
-
-        // Generamos la URL dinámica de Expo Go para que abra la app al hacer clic
+    const sendResetEmail = useCallback(async () => {
         const redirectUrl = Linking.createURL('/screens/auth/UpdatePasswordScreen');
-        console.log("URL de redirección (cópiala y pégala en Supabase):", redirectUrl);
-        console.log("O usa el wildcard: exp://*");
-        
+        console.log("URL de redirección:", redirectUrl);
+
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
             redirectTo: redirectUrl,
         });
 
-        if (error) Alert.alert('Error', error.message);
-        else Alert.alert('¡Correo enviado!', 'Revisa tu bandeja de entrada para restablecer tu contraseña.');
+        if (error) throw error;
+    }, [email]);
+
+    const handleResetRequest = async () => {
+        setLoading(true);
+        try {
+            await sendResetEmail();
+            setShowMailModal(true);
+        } catch (e: any) {
+            setShowErrorModal(true);
+            setErrorMessage(e?.message || 'Error al enviar el correo');
+        }
         setLoading(false);
     };
 
@@ -44,6 +55,17 @@ export default function ForgotPassword() {
             >
                 <Text style={styles.buttonText}>{loading ? 'ENVIANDO...' : 'ENVIAR CORREO'}</Text>
             </TouchableOpacity>
+
+            <MailModal
+                visible={showMailModal}
+                onClose={() => setShowMailModal(false)}
+            />
+
+            <ErrorAuthModal
+                visible={showErrorModal}
+                message={errorMessage}
+                onClose={() => setShowErrorModal(false)}
+            />
         </View>
     );
 }

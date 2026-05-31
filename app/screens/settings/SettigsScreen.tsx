@@ -1,6 +1,8 @@
+import ErrorAuthModal from "@/components/auth/ErrorAuthModal";
 import { FontAwesome5 } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import CardButton from "../../../components/cog/CardButton";
 import { SignOutButton } from "../../../components/cog/SignOutButton";
@@ -8,13 +10,15 @@ import { authService } from "../../../src/services/authService";
 
 
 export default function SettingsScreen() {
-
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string>('');
 
     async function handleSignOut() {
         try {
             await authService.signOut();
         } catch (error: any) {
-            Alert.alert('Error', error.message);
+            setErrorMessage(error.message ?? 'Error al cerrar sesión');
+            setShowErrorModal(true);
         }
     }
     return (
@@ -37,6 +41,12 @@ export default function SettingsScreen() {
                     <SignOutButton onPress={handleSignOut} />
 
                 </View>
+
+                <ErrorAuthModal
+                    visible={showErrorModal}
+                    message={errorMessage}
+                    onClose={() => setShowErrorModal(false)}
+                />
             </ScrollView>
         </SafeAreaView>
     );

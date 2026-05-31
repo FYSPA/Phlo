@@ -1,8 +1,11 @@
+import ErrorAuthModal from '@/components/auth/ErrorAuthModal';
+import MailRegisterModal from '@/components/auth/MailRegisterModal';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { supabase } from '../../../src/services/supabase';
+import { authService } from '../../../src/services/authService';
+
 
 export default function RegisterScreen() {
     const router = useRouter();
@@ -11,27 +14,30 @@ export default function RegisterScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [showMailModal, setShowMailModal] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     async function handleSignUp() {
         if (!email || !password || !username) {
-            Alert.alert('Error', 'Por favor llena todos los campos');
+            setErrorMessage('Por favor llena todos los campos');
+            setShowErrorModal(true);
             return;
         }
 
         setLoading(true);
-        const { error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: {
-                data: { username: username }, // Se envía al Trigger de SQL
-            },
-        });
-
-        if (error) {
-            Alert.alert('Error', error.message);
-        } else {
-            Alert.alert('¡Éxito!', 'Revisa tu correo para confirmar tu cuenta');
-            router.replace('/screens/auth/LoginScreen');
+        try {
+            const data = await authService.signUp(email, password, username);
+            console.log('[DEBUG] signUp result:', data);
+            if (!data?.user) {
+                setErrorMessage('No se pudo crear la cuenta. Intenta de nuevo.');
+                setShowErrorModal(true);
+            } else {
+                setShowMailModal(true);
+            }
+        } catch (e: any) {
+            setErrorMessage(e?.message || 'Error al crear la cuenta');
+            setShowErrorModal(true);
         }
         setLoading(false);
     }
@@ -78,6 +84,20 @@ export default function RegisterScreen() {
                     <Text style={styles.buttonText}>{loading ? 'CREANDO...' : 'CREAR CUENTA'}</Text>
                 </TouchableOpacity>
             </View>
+            <MailRegisterModal
+                visible={showMailModal}
+                email={email}
+                onResend={(email) => authService.resendConfirmationEmail(email)}
+                onClose={() => {
+                    setShowMailModal(false);
+                    router.replace('/screens/auth/LoginScreen');
+                }}
+            />
+            <ErrorAuthModal
+                visible={showErrorModal}
+                message={errorMessage}
+                onClose={() => setShowErrorModal(false)}
+            />
         </KeyboardAvoidingView>
     );
 }

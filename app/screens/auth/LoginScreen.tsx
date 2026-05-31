@@ -1,7 +1,8 @@
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import ErrorCredentialsModal from '../../../components/auth/ErrorCredentialsModal';
 import { supabase } from '../../../src/services/supabase';
 
 export default function LoginScreen() {
@@ -10,13 +11,16 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     async function handleLogin() {
         setLoading(true);
         const { error } = await supabase.auth.signInWithPassword({ email, password });
 
         if (error) {
-            Alert.alert('Error', 'Credenciales incorrectas');
+            setShowErrorModal(true);
+            setErrorMessage(error.message);
         } else {
             // El layout.tsx detectará la sesión y te mandará al mapa automáticamente
         }
@@ -65,6 +69,10 @@ export default function LoginScreen() {
                     <Text style={styles.linkText}>Se te olvido la contraseña? Restablecer</Text>
                 </TouchableOpacity>
             </View>
+            <ErrorCredentialsModal
+                visible={showErrorModal}
+                onClose={() => setShowErrorModal(false)}
+            />
         </KeyboardAvoidingView>
     );
 }
