@@ -155,6 +155,7 @@ export default function ExerciseScreen() {
                 visible={showError}
                 onClose={() => setShowError(false)}
             />
+
         </SafeAreaView>
     );
 }

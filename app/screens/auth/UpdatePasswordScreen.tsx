@@ -1,21 +1,28 @@
+import ErrorAuthModal from '@/components/auth/ErrorAuthModal';
+import VerificationModal from '@/components/auth/VerificationModal';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../../../src/services/supabase';
+
 
 export default function UpdatePassword() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+    const [verificationVisible, setVerificationVisible] = useState(false);
+    const [showErrorModal, setShowErrorModal] = useState(false);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const handleUpdate = async () => {
         setLoading(true);
         const { error } = await supabase.auth.updateUser({ password });
 
         if (error) {
-            Alert.alert('Error', error.message);
+            setShowErrorModal(true);
+            setErrorMessage(error?.message || 'Error al actualizar la contraseña');
         } else {
-            Alert.alert('¡Éxito!', 'Tu contraseña ha sido actualizada.');
+            setVerificationVisible(true);
             router.replace('/screens/auth/LoginScreen');
         }
         setLoading(false);
@@ -34,6 +41,15 @@ export default function UpdatePassword() {
             <TouchableOpacity style={styles.button} onPress={handleUpdate} disabled={loading}>
                 <Text style={styles.buttonText}>ACTUALIZAR CONTRASEÑA</Text>
             </TouchableOpacity>
+            <VerificationModal
+                visible={verificationVisible}
+                onClose={() => setVerificationVisible(false)}
+            />
+            <ErrorAuthModal
+                visible={showErrorModal}
+                message={errorMessage}
+                onClose={() => setShowErrorModal(false)}
+            />
         </View>
     );
 }
