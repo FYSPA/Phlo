@@ -7,6 +7,8 @@ import BattleResultModal from '../../../components/pvp/BattleResultModal';
 import PlayerProgress from '../../../components/pvp/PlayerProgress';
 import RoundResult from '../../../components/pvp/RoundResult';
 import { useAIBot } from '../../../hooks/useAIBot';
+import { useBattleTimer } from '../../../hooks/useBattleTimer';
+import { pvpService } from '../../../src/services/pvpService';
 import { supabase } from '../../../src/services/supabase';
 import { validateSolutionWithFeedback } from '../../../src/utils/codeUtils';
 import { calculateRewards, getLeagueTier } from '../../../src/utils/pvpUtils';
@@ -24,7 +26,6 @@ export default function BattleScreen() {
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [currentRoundIndex, setCurrentRoundIndex] = useState(0);
     const [currentCode, setCurrentCode] = useState('');
-    const [timeLeft, setTimeLeft] = useState(ROUND_TIME);
     const [isRoundActive, setIsRoundActive] = useState(false);
     const [roundResult, setRoundResult] = useState<'win' | 'lose' | 'tie' | null>(null);
     const [showResultModal, setShowResultModal] = useState(false);
@@ -37,7 +38,7 @@ export default function BattleScreen() {
     const [p1ScoreDisplay, setP1ScoreDisplay] = useState(0);
     const [p2ScoreDisplay, setP2ScoreDisplay] = useState(0);
 
-    const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const { timeLeft, start: startTimer, stop: stopTimer } = useBattleTimer(ROUND_TIME);
     const roundActiveRef = useRef(false);
     const matchCreatedRef = useRef(false);
     const botRespondedRef = useRef(false);
@@ -50,7 +51,7 @@ export default function BattleScreen() {
     useEffect(() => {
         initBattle();
         return () => {
-            if (timerRef.current) clearInterval(timerRef.current);
+            stopTimer();
         };
     }, []);
 
@@ -91,23 +92,13 @@ export default function BattleScreen() {
         }
 
         setCurrentCode('');
-        setTimeLeft(ROUND_TIME);
         setIsRoundActive(true);
         roundActiveRef.current = true;
         hasUserCheckedRef.current = false;
         botRespondedRef.current = false;
         reset();
 
-        timerRef.current = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    if (timerRef.current) clearInterval(timerRef.current);
-                    handleTimeout();
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+        startTimer(handleTimeout);
     }, [exercises]);
 
     useEffect(() => {
@@ -129,7 +120,7 @@ export default function BattleScreen() {
 
         hasUserCheckedRef.current = true;
 
-        if (timerRef.current) clearInterval(timerRef.current);
+        stopTimer();
 
         const { isCorrect } = validateSolutionWithFeedback(currentCode, exercises[roundIndexRef.current]?.solution_js || '');
 
@@ -224,7 +215,7 @@ export default function BattleScreen() {
         battleEndedRef.current = true;
         setBattleEnded(true);
 
-        if (timerRef.current) clearInterval(timerRef.current);
+        stopTimer();
 
         const isVictory = p1ScoreRef.current > p2ScoreRef.current;
         const calculatedRewards = calculateRewards(p1ScoreRef.current, p2ScoreRef.current, true);
@@ -239,120 +230,11 @@ export default function BattleScreen() {
         setNewLeague(newTier);
 
         console.log('[DEBUG] Llamando updatePlayerStats');
-        updatePlayerStats(calculatedRewards.xp, calculatedRewards.gems, calculatedRewards.leaguePoints);
+        pvpService.updatePlayerStats(userId, calculatedRewards.xp, calculatedRewards.gems, calculatedRewards.leaguePoints);
 
         console.log('[DEBUG] Mostrando BattleResultModal');
         setShowResultModal(true);
     }, [leaguePoints]);
-
-    const updatePlayerStats = async (xpEarned: number, gemsEarned: number, leaguePointsEarned: number) => {
-        console.log('[DEBUG] updatePlayerStats iniciado');
-        console.log('[DEBUG] xpEarned:', xpEarned, 'gemsEarned:', gemsEarned, 'leaguePoints:', leaguePointsEarned);
-        console.log('[DEBUG] userId:', userId);
-        
-        // Check if userId is defined
-        if (!userId) {
-            console.error('[ERROR] userId is undefined, cannot update player stats');
-            // Try to get user from Supabase auth as fallback
-            try {
-                const { data: { user }, error } = await supabase.auth.getUser();
-                if (error) {
-                    console.error('[ERROR] Failed to get user from auth:', error);
-                    return;
-                }
-                if (!user) {
-                    console.error('[ERROR] No user found in auth');
-                    return;
-                }
-                console.log('[INFO] Using user ID from auth:', user.id);
-                // Temporarily use the auth user ID for this operation
-                const authUserId = user.id;
-                
-                console.log('[DEBUG] Obteniendo perfil...');
-                const { data: profile, error: selectError } = await supabase
-                    .from('profiles')
-                    .select('xp, gems, league_points')
-                    .eq('id', authUserId)
-                    .single();
-
-                console.log('[DEBUG] Perfil obtenido:', profile);
-                console.log('[DEBUG] Error al obtener:', selectError);
-
-                if (!profile) {
-                    console.log('[DEBUG] No se encontró perfil');
-                    return;
-                }
-
-                const newXp = (profile.xp || 0) + xpEarned;
-                const newGems = (profile.gems || 0) + gemsEarned;
-                const newLeaguePts = Math.max(0, (profile.league_points || 0) + leaguePointsEarned);
-
-                console.log('[DEBUG] Nuevos valores - xp:', newXp, 'gems:', newGems, 'league:', newLeaguePts);
-
-                const { error: updateError } = await supabase
-                    .from('profiles')
-                    .update({
-                        xp: newXp,
-                        gems: newGems,
-                        league_points: newLeaguePts,
-                    })
-                    .eq('id', authUserId);
-
-                console.log('[DEBUG] Error al actualizar:', updateError);
-
-                if (updateError) {
-                    console.error('Error updating stats:', updateError);
-                } else {
-                    console.log('[DEBUG] Stats actualizados correctamente');
-                }
-            } catch (authError) {
-                console.error('Error in updatePlayerStats with auth fallback:', authError);
-            }
-            return;
-        }
-        
-        try {
-            console.log('[DEBUG] Obteniendo perfil...');
-            const { data: profile, error: selectError } = await supabase
-                .from('profiles')
-                .select('xp, gems, league_points')
-                .eq('id', userId)
-                .single();
-
-            console.log('[DEBUG] Perfil obtenido:', profile);
-            console.log('[DEBUG] Error al obtener:', selectError);
-
-            if (!profile) {
-                console.log('[DEBUG] No se encontró perfil');
-                return;
-            }
-
-            const newXp = (profile.xp || 0) + xpEarned;
-            const newGems = (profile.gems || 0) + gemsEarned;
-            const newLeaguePts = Math.max(0, (profile.league_points || 0) + leaguePointsEarned);
-
-            console.log('[DEBUG] Nuevos valores - xp:', newXp, 'gems:', newGems, 'league:', newLeaguePts);
-
-            const { error: updateError } = await supabase
-                .from('profiles')
-                .update({
-                    xp: newXp,
-                    gems: newGems,
-                    league_points: newLeaguePts,
-                })
-                .eq('id', userId);
-
-            console.log('[DEBUG] Error al actualizar:', updateError);
-
-            if (updateError) {
-                console.error('Error updating stats:', updateError);
-            } else {
-                console.log('[DEBUG] Stats actualizados correctamente');
-            }
-        } catch (e) {
-            console.error('Error in updatePlayerStats:', e);
-        }
-    };
 
     const handlePlayAgain = () => {
         setShowResultModal(false);
