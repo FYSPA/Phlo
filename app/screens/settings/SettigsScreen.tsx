@@ -3,11 +3,11 @@ import { FontAwesome5 } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CardButton from "../../../components/cog/CardButton";
@@ -41,35 +41,35 @@ export default function SettingsScreen() {
         <Text style={styles.title}>Ajustes</Text>
 
         <CardButton
-          title="Notifications"
-          subtitle="Manage your notification preferences"
+          title="Notificaciones"
+          subtitle="Administra tus preferencias de notificación"
           icon="bell"
           onPress={() => {
             router.push("/screens/settings/NotificationsScreen");
           }}
         />
         <CardButton
-          title="Privacy"
-          subtitle="Manage your privacy preferences"
+          title="Privacidad"
+          subtitle="Administra tus preferencias de privacidad"
           icon="lock"
           onPress={() => {
-            console.log("Privacy pressed");
+            router.push("/screens/settings/PrivacyScreen");
           }}
         />
         <CardButton
-          title="Support"
-          subtitle="Get help with any issues"
+          title="Soporte"
+          subtitle="Obtén ayuda con cualquier problema"
           icon="question-circle"
           onPress={() => {
-            console.log("Support pressed");
+            router.push("/screens/settings/SupportScreen");
           }}
         />
         <CardButton
-          title="About"
-          subtitle="Learn more about the app"
+          title="Acerca de"
+          subtitle="Más información sobre la aplicación"
           icon="info-circle"
           onPress={() => {
-            console.log("About pressed");
+            router.push("/screens/settings/AboutScreen");
           }}
         />
 
